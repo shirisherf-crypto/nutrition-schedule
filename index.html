@@ -101,7 +101,7 @@ async function saveToDB(schedData){
 }
 
 function subscribeToChanges(callback){
-  return supabase.channel("schedule_changes")
+  return supabaseClient.channel("schedule_changes")
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"schedule_data"},payload=>{
       if(payload.new&&payload.new.data) callback(payload.new.data);
     })
@@ -242,7 +242,7 @@ function App(){
     const ch=subscribeToChanges(newData=>{
       sData(newData);
     });
-    return()=>supabase.removeChannel(ch);
+    return()=>supabaseClient.removeChannel(ch);
   },[]);
 
   // Auto-save to DB with debounce
