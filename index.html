@@ -24,6 +24,7 @@ const SUPABASE_URL = "https://getsysxmaypwafenceqm.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOj"; // ← תחליפי כאן
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const {useState,useMemo,useEffect,useCallback,useRef,createElement:h}=React;
 const EMAILS=["shiris@ariel.ac.il","hagitsa@ariel.ac.il","orlybish@ariel.ac.il","veredks@ariel.ac.il"];
 const CL={"ורד":{c:"#5B21B6",bg:"#EDE9FE"},"מונה":{c:"#0369A1",bg:"#E0F2FE"},"רות":{c:"#166534",bg:"#DCFCE7"},"אסף":{c:"#92400E",bg:"#FEF3C7"},"קרן":{c:"#BE123C",bg:"#FFF1F2"},"אביגיל":{c:"#1E3A8A",bg:"#DBEAFE"},"רוני":{c:"#C2410C",bg:"#FFF7ED"},"שירי":{c:"#0F766E",bg:"#CCFBF1"},"חגית":{c:"#831843",bg:"#FDF2F8"},"כרמית":{c:"#312E81",bg:"#E0E7FF"}};
@@ -87,7 +88,7 @@ const SCHED={
 // ══════════════════════════════════════════
 async function loadFromDB(){
   try{
-    const{data,error}=await supabase.from("schedule_data").select("data").eq("id","main").single();
+    const{data,error}=await supabaseClient.from("schedule_data").select("data").eq("id","main").single();
     if(error||!data||!data.data||Object.keys(data.data).length===0)return null;
     return data.data;
   }catch(e){return null;}
@@ -95,7 +96,7 @@ async function loadFromDB(){
 
 async function saveToDB(schedData){
   try{
-    const{error}=await supabase.from("schedule_data").upsert({id:"main",data:schedData,updated_at:new Date().toISOString()});
+    const{error}=await supabaseClient.from("schedule_data").upsert({id:"main",data:schedData,updated_at:new Date().toISOString()});
     return !error;
   }catch(e){return false;}
 }
