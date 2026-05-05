@@ -227,7 +227,7 @@ function StatsPanel(){
   return h("div",{style:{padding:18}},
     h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764",marginBottom:3}},'📊 ש"ס וש"ש — לפי אקסל שעות סגל תשפ"ז'),
     h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:4}},"כולל קורסים חיצוניים · כולל גמולי תפקיד · ניתן לעריכה ידנית"),
-    h("div",{style:{fontSize:10,color:"#6B7280",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:7,padding:"6px 10px",marginBottom:16}},"💡 לחצי על ש"ס / ש"ש כדי לערוך — הסכום מחושב אוטומטי"),
+    h("div",{style:{fontSize:10,color:"#6B7280",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:7,padding:"6px 10px",marginBottom:16}},"💡 לחצי על ש׳׳ס / ש׳׳ש כדי לערוך — הסכום מחושב אוטומטי"),
     h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}},
       Object.entries(staffData).map(([name,d])=>{
         const l=CL[name]||{c:"#374151",bg:"#F3F4F6"};
@@ -356,7 +356,7 @@ function App(){
         h("span",{style:{color:"rgba(255,255,255,0.5)",fontSize:10}},user.split("@")[0]),
         h("button",{onClick:()=>sUser(null),style:{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:7,padding:"3px 9px",fontSize:11}},"יציאה"))),
     h("div",{style:{background:"#fff",borderBottom:"1.5px solid #EDE9FE",overflowX:"auto"}},
-      h("div",{style:{display:"flex",alignItems:"stretch",padding:"0 10px",minWidth:"max-content"}},
+      h("div",{style:{display:"flex"ש,alignItems:"stretch",padding:"0 10px",minWidth:"max-content"}},
         h("span",{style:{alignSelf:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,padding:"0 8px 0 2px",whiteSpace:"nowrap"}},"תואר ראשון"),
         bsc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",position:"relative",color:active?"#5B21B6":t.fut?"#9CA3AF":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,t.fut&&h("span",{style:{position:"absolute",top:4,right:-1,fontSize:7,background:"#FED7AA",color:"#92400E",borderRadius:99,padding:"0 3px",fontWeight:700}},"ח"),cYids.has(t.id)?" ⚠":"");}),
         h("div",{style:{width:1,background:"#EDE9FE",margin:"7px 8px"}}),
