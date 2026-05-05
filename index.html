@@ -8,6 +8,7 @@
 body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl;background:#F0EDFF;min-height:100vh}
 button,select,input,textarea{font-family:inherit;cursor:pointer}
 .inp{width:100%;padding:8px 11px;border-radius:8px;border:1.5px solid #E5E7EB;font-size:12px;outline:none;background:#FAFAFA;box-sizing:border-box}
+.ni{width:50px;padding:2px 4px;border-radius:4px;border:1px solid #D1D5DB;text-align:center;font-size:11px;background:#F9FAFB}
 </style>
 </head>
 <body>
@@ -16,27 +17,27 @@ button,select,input,textarea{font-family:inherit;cursor:pointer}
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://getsysxmaypwafenceqm.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOj";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPA_URL = "https://getsysxmaypwafenceqm.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOj";
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
-async function dbLoad(yr){
+async function dbLoad(id){
   try{
-    const {data,error} = await sb.from("schedule_data").select("data").eq("id","sched_"+yr).single();
+    const {data,error} = await sb.from("schedule_data").select("data").eq("id",id).single();
     if(error||!data||!data.data||Object.keys(data.data).length===0) return null;
     return data.data;
   }catch(e){return null;}
 }
-async function dbSave(d,yr){
+async function dbSave(id,d){
   try{
-    const {error} = await sb.from("schedule_data").upsert({id:"sched_"+yr,data:d,updated_at:new Date().toISOString()});
+    const {error} = await sb.from("schedule_data").upsert({id,data:d,updated_at:new Date().toISOString()});
     return !error;
   }catch(e){return false;}
 }
-function dbSubscribe(cb,yr){
-  return sb.channel("ch_"+yr)
+function dbSub(id,cb){
+  return sb.channel("ch_"+id)
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"schedule_data"},p=>{
-      if(p.new&&p.new.id==="sched_"+yr&&p.new.data) cb(p.new.data);
+      if(p.new&&p.new.id===id&&p.new.data) cb(p.new.data);
     }).subscribe();
 }
 
@@ -45,125 +46,129 @@ const {useState,useMemo,useEffect,useCallback,useRef,createElement:h} = React;
 const EMAILS=["shiris@ariel.ac.il","hagitsa@ariel.ac.il","orlybish@ariel.ac.il","veredks@ariel.ac.il"];
 const CL={"ורד":{c:"#5B21B6",bg:"#EDE9FE"},"מונה":{c:"#0369A1",bg:"#E0F2FE"},"רות":{c:"#166534",bg:"#DCFCE7"},"אסף":{c:"#92400E",bg:"#FEF3C7"},"קרן":{c:"#BE123C",bg:"#FFF1F2"},"אביגיל":{c:"#1E3A8A",bg:"#DBEAFE"},"רוני":{c:"#C2410C",bg:"#FFF7ED"},"שירי":{c:"#0F766E",bg:"#CCFBF1"},"חגית":{c:"#831843",bg:"#FDF2F8"},"כרמית":{c:"#312E81",bg:"#E0E7FF"}};
 
-const STAFF_BASE={
-  "ורד":{ss:12.5,sha:6.25,courses:[{n:"Scientific writing",ss:2,sha:1},{n:"טרנזיציה תזונתית",ss:2,sha:1},{n:"מבוא לדיאטטיקה",ss:2.5,sha:1.25},{n:"תזונה בבריאות הציבור",ss:2,sha:1},{n:"תרגום ידע מדעי בתזונה",ss:2,sha:1}],bonuses:[{n:"גמול ראש תוכנית מ.א",ss:2,sha:1}],ext:[]},
-  "מונה":{ss:12,sha:6,courses:[{n:"סטטיסטיקה לתואר שני",ss:1,sha:0.5},{n:"סטטיסטיקה למדעי הבריאות",ss:2,sha:1},{n:"סטטיסטיקה בניסויים",ss:3,sha:1.5},{n:"שיטות מחקר מתקדמות בתזונה",ss:2,sha:1}],bonuses:[],ext:[{n:"סטטיסטיקה לרפואה",dept:"רפואה",ss:2,sha:1},{n:"אפידמיולוגיה ובריאות ציבור",dept:"רפואה",ss:2,sha:1}]},
-  "רות":{ss:12,sha:6,courses:[{n:"יסודות הגנטיקה",ss:2,sha:1},{n:"תזונה מולקולרית וגנטית",ss:2,sha:1},{n:"סדנת מחקר מתקדם",ss:2,sha:1}],bonuses:[],ext:[{n:"גנטיקה רפואית",dept:"רפואה",ss:3,sha:1.5},{n:"גנטיקה",dept:"קדם רפואה",ss:3,sha:1.5}]},
-  "אסף":{ss:16,sha:8,courses:[{n:"תזונה וסביבה",ss:2,sha:1},{n:"מבוא לאפידמיולוגיה",ss:2,sha:1},{n:"תזונה בגיל המבוגר",ss:2,sha:1},{n:"אפידמיולוגיה של גורמי סיכון",ss:2,sha:1},{n:"סמינריון במטבוליזם",ss:2,sha:1}],bonuses:[{n:"גמול סגנית ת.ראשון",ss:2,sha:1},{n:"החלפת שירי כרמ\"ח סמ' ב",ss:2,sha:1}],ext:[{n:"סדנא בהרכב גוף",dept:"פיזיותרפיה",ss:2,sha:1}]},
-  "קרן":{ss:12,sha:6,courses:[{n:"דיאטטיקה א'",ss:2.5,sha:1.25},{n:"דיאטטיקה ב'",ss:2.5,sha:1.25},{n:"שיטות סקר ומחקר",ss:4,sha:2},{n:"סמינריון: ניהול וניתוח נתונים",ss:2,sha:1}],bonuses:[{n:"גמול אחראי שיווק",ss:1,sha:0.5}],ext:[]},
-  "אביגיל":{ss:14.2,sha:7.1,courses:[{n:"הכרות עם עבודת הדיאטן",ss:1,sha:0.5},{n:"התנסות ביזמות ומחקר",ss:3.2,sha:1.6},{n:"מדידת צריכה תזונתית",ss:2,sha:1},{n:"סטטיסטיקה למדעי הבריאות — תרגיל",ss:1,sha:0.5},{n:"תזונה בהריון ובשנות החיים הראשונות",ss:2,sha:1},{n:"תזונת ילדים",ss:3,sha:1.5},{n:"תורת הראיון (סדנה)",ss:2,sha:1}],bonuses:[],ext:[]},
-  "רוני":{ss:16,sha:8,courses:[{n:"אכילה הדונית והתמכרות",ss:2,sha:1},{n:"הפרעות אכילה",ss:2,sha:1},{n:"כתיבה וקריאה מודרכת",ss:2,sha:1},{n:"מבוא לתזונה",ss:2,sha:1},{n:"תזונה, טכנולוגיה ותעשייה",ss:2,sha:1},{n:"סמינריון",ss:2,sha:1}],bonuses:[],ext:[{n:"תזונה בחיי היומיום",dept:"כללי",ss:2,sha:1},{n:"תזונה בבריאות ורווחה — סיעוד",dept:"סיעוד",ss:2,sha:1}]},
-  "שירי":{ss:8,sha:4,note:"שבתון",courses:[{n:"תיקוף ותרגום שאלונים",ss:2,sha:1},{n:"השמנה",ss:2,sha:1}],bonuses:[{n:"גמול תפקיד רמ\"ח",ss:4,sha:2}],ext:[]},
-  "חגית":{ss:24,sha:12,courses:[{n:"סיורים, חטיבת מחקר ויזמות",ss:1,sha:0.5},{n:"תורת ההורמונים",ss:2,sha:1},{n:"מיקרוביולוגיה ובטיחות מזון — הרצאה",ss:2,sha:1},{n:"מיקרוביולוגיה ובטיחות מזון — מעבדה",ss:2,sha:1},{n:"אנטומיה ופיזיולוגיה מערכות בגוף ב'",ss:3,sha:1.5},{n:"אנטומיה ופיזיולוגיה מערכות הגוף א'",ss:3,sha:1.5},{n:"תזונת האדם א' — מאקרו",ss:3,sha:1.5},{n:"תזונת האדם ב' — מיקרו",ss:3,sha:1.5},{n:"משק המים והמינראלים בגוף",ss:2,sha:1}],bonuses:[],ext:[{n:"אבות מזון ומיקרונוטריאנטים",dept:"הנדסה כימית",ss:3,sha:1.5}]},
-  "כרמית":{ss:12.20,sha:6.10,courses:[{n:"תצפית במרפאות",ss:3.23,sha:1.61},{n:"התנסות בריאות ציבור",ss:3.32,sha:1.66},{n:"קורס מלווה בריאות ציבור",ss:2,sha:1},{n:"התנסות במרפאות",ss:3.32,sha:1.66},{n:"היבטים כימיים",ss:0.33,sha:0.17},{n:"קורס מלווה מרפאות",ss:2,sha:1}],bonuses:[],ext:[]},
-};
+const STAFF_DEFAULT=[
+  {name:"ורד",note:"",courses:[{n:"Scientific writing",ss:2},{n:"טרנזיציה תזונתית",ss:2},{n:"מבוא לדיאטטיקה",ss:2.5},{n:"תזונה בבריאות הציבור",ss:2},{n:"תרגום ידע מדעי בתזונה",ss:2}],ext:[],bonuses:[{n:"גמול ראש תוכנית מ.א",ss:2}]},
+  {name:"מונה",note:"",courses:[{n:"סטטיסטיקה לתואר שני",ss:1},{n:"סטטיסטיקה למדעי הבריאות",ss:2},{n:"סטטיסטיקה בניסויים",ss:3},{n:"שיטות מחקר מתקדמות בתזונה",ss:2}],ext:[{n:"סטטיסטיקה לרפואה",dept:"רפואה",ss:2},{n:"אפידמיולוגיה ובריאות ציבור",dept:"רפואה",ss:2}],bonuses:[]},
+  {name:"רות",note:"",courses:[{n:"יסודות הגנטיקה",ss:2},{n:"תזונה מולקולרית וגנטית",ss:2},{n:"סדנת מחקר מתקדם",ss:2}],ext:[{n:"גנטיקה רפואית",dept:"רפואה",ss:3},{n:"גנטיקה",dept:"קדם רפואה",ss:3}],bonuses:[]},
+  {name:"אסף",note:"",courses:[{n:"תזונה וסביבה",ss:2},{n:"מבוא לאפידמיולוגיה",ss:2},{n:"תזונה בגיל המבוגר",ss:2},{n:"אפידמיולוגיה של גורמי סיכון",ss:2},{n:"סמינריון במטבוליזם",ss:2}],ext:[{n:"סדנא בהרכב גוף",dept:"פיזיותרפיה",ss:2}],bonuses:[{n:"גמול סגנית ת.ראשון",ss:2},{n:"החלפת שירי כרמח סמ ב",ss:2}]},
+  {name:"קרן",note:"",courses:[{n:"דיאטטיקה א",ss:2.5},{n:"דיאטטיקה ב",ss:2.5},{n:"שיטות סקר ומחקר",ss:4},{n:"סמינריון ניהול וניתוח נתונים",ss:2}],ext:[],bonuses:[{n:"גמול אחראי שיווק",ss:1}]},
+  {name:"אביגיל",note:"",courses:[{n:"הכרות עם עבודת הדיאטן",ss:1},{n:"התנסות ביזמות ומחקר",ss:3.2},{n:"מדידת צריכה תזונתית",ss:2},{n:"סטטיסטיקה למדעי הבריאות תרגיל",ss:1},{n:"תזונה בהריון ובשנות החיים הראשונות",ss:2},{n:"תזונת ילדים",ss:3},{n:"תורת הראיון סדנה",ss:2}],ext:[],bonuses:[]},
+  {name:"רוני",note:"",courses:[{n:"אכילה הדונית והתמכרות",ss:2},{n:"הפרעות אכילה",ss:2},{n:"כתיבה וקריאה מודרכת",ss:2},{n:"מבוא לתזונה",ss:2},{n:"תזונה טכנולוגיה ותעשייה",ss:2},{n:"סמינריון",ss:2}],ext:[{n:"תזונה בחיי היומיום",dept:"כללי",ss:2},{n:"תזונה בבריאות ורווחה סיעוד",dept:"סיעוד",ss:2}],bonuses:[]},
+  {name:"שירי",note:"שבתון",courses:[{n:"תיקוף ותרגום שאלונים",ss:2},{n:"השמנה",ss:2}],ext:[],bonuses:[{n:"גמול תפקיד רמח",ss:4}]},
+  {name:"חגית",note:"",courses:[{n:"סיורים חטיבת מחקר ויזמות",ss:1},{n:"תורת ההורמונים",ss:2},{n:"מיקרוביולוגיה ובטיחות מזון הרצאה",ss:2},{n:"מיקרוביולוגיה ובטיחות מזון מעבדה",ss:2},{n:"אנטומיה ופיזיולוגיה מערכות בגוף ב",ss:3},{n:"אנטומיה ופיזיולוגיה מערכות הגוף א",ss:3},{n:"תזונת האדם א מאקרו",ss:3},{n:"תזונת האדם ב מיקרו",ss:3},{n:"משק המים והמינראלים בגוף",ss:2}],ext:[{n:"אבות מזון ומיקרונוטריאנטים",dept:"הנדסה כימית",ss:3}],bonuses:[]},
+  {name:"כרמית",note:"",courses:[{n:"תצפית במרפאות",ss:3.23},{n:"התנסות בריאות ציבור",ss:3.32},{n:"קורס מלווה בריאות ציבור",ss:2},{n:"התנסות במרפאות",ss:3.32},{n:"היבטים כימיים",ss:0.33},{n:"קורס מלווה מרפאות",ss:2}],ext:[],bonuses:[]},
+];
+
+function calcTotals(staff){
+  return staff.map(s=>{
+    const ss = [...s.courses,...s.ext,...s.bonuses].reduce((a,c)=>a+(parseFloat(c.ss)||0),0);
+    return {...s, totalSS:+ss.toFixed(2), totalSHA:+(ss/2).toFixed(2)};
+  });
+}
 
 function lc(n){if(!n)return{c:"#6B7280",bg:"#F3F4F6"};if(CL[n])return CL[n];for(const[k,v]of Object.entries(CL))if(n.includes(k))return v;return{c:"#6B7280",bg:"#F3F4F6"};}
 
 const DAYS=["ראשון","שני","שלישי","רביעי","חמישי"];
 const HS=8,HE=21,NH=HE-HS;
-const HLBLS=Array.from({length:NH+1},(_,i)=>`${String(HS+i).padStart(2,"0")}:00`);
+const HLBLS=Array.from({length:NH+1},(_,i)=>String(HS+i).padStart(2,"0")+":00");
 const RH=52;
 
 const YTABS=[
-  {id:"y1a",s:"א/א",deg:"תואר ראשון",lbl:"שנה א' סמ' א'",fut:false,zoomDays:[],preSem:"לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל (1 ש\"ס)"},
-  {id:"y1b",s:"א/ב",deg:"תואר ראשון",lbl:"שנה א' סמ' ב'",fut:false,zoomDays:["שלישי"]},
-  {id:"y2a",s:"ב/א",deg:"תואר ראשון",lbl:"שנה ב' סמ' א'",fut:false,zoomDays:["שני"]},
-  {id:"y2b",s:"ב/ב",deg:"תואר ראשון",lbl:"שנה ב' סמ' ב'",fut:false,zoomDays:["שלישי"]},
-  {id:"y3a",s:"ג/א",deg:"תואר ראשון",lbl:"שנה ג' סמ' א'",fut:false,zoomDays:["ראשון"]},
-  {id:"y3b",s:"ג/ב",deg:"תואר ראשון",lbl:"שנה ג' סמ' ב'",fut:false,zoomDays:[]},
-  {id:"y4a",s:"ד/א",deg:"תואר ראשון",lbl:"שנה ד' סמ' א'",fut:true,zoomDays:[]},
-  {id:"y4b",s:"ד/ב",deg:"תואר ראשון",lbl:"שנה ד' סמ' ב'",fut:true,zoomDays:[]},
-  {id:"m1a",s:"א/א",deg:"תואר שני",lbl:"מ.א שנה א' סמ' א'",fut:false,zoomDays:[]},
-  {id:"m1b",s:"א/ב",deg:"תואר שני",lbl:"מ.א שנה א' סמ' ב'",fut:false,zoomDays:[]},
-  {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"מ.א שנה ב' סמ' א'",fut:false,zoomDays:[]},
-  {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"מ.א שנה ב' סמ' ב'",fut:false,zoomDays:[]},
+  {id:"y1a",s:"א/א",deg:"תואר ראשון",lbl:"שנה א סמ א",fut:false,zD:[]},
+  {id:"y1b",s:"א/ב",deg:"תואר ראשון",lbl:"שנה א סמ ב",fut:false,zD:["שלישי"]},
+  {id:"y2a",s:"ב/א",deg:"תואר ראשון",lbl:"שנה ב סמ א",fut:false,zD:["שני"]},
+  {id:"y2b",s:"ב/ב",deg:"תואר ראשון",lbl:"שנה ב סמ ב",fut:false,zD:["שלישי"]},
+  {id:"y3a",s:"ג/א",deg:"תואר ראשון",lbl:"שנה ג סמ א",fut:false,zD:["ראשון"]},
+  {id:"y3b",s:"ג/ב",deg:"תואר ראשון",lbl:"שנה ג סמ ב",fut:false,zD:[]},
+  {id:"y4a",s:"ד/א",deg:"תואר ראשון",lbl:"שנה ד סמ א",fut:true,zD:[]},
+  {id:"y4b",s:"ד/ב",deg:"תואר ראשון",lbl:"שנה ד סמ ב",fut:true,zD:[]},
+  {id:"m1a",s:"א/א",deg:"תואר שני",lbl:"מ.א שנה א סמ א",fut:false,zD:[]},
+  {id:"m1b",s:"א/ב",deg:"תואר שני",lbl:"מ.א שנה א סמ ב",fut:false,zD:[]},
+  {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"מ.א שנה ב סמ א",fut:false,zD:[]},
+  {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"מ.א שנה ב סמ ב",fut:false,zD:[]},
 ];
-const AYS=['\u05ea\u05e9\u05e4"\u05d6','\u05ea\u05e9\u05e4"\u05d7','\u05ea\u05e9\u05e4"\u05d8','\u05ea\u05e9"\u05e5','\u05ea\u05e9\u05e6"\u05d0'];
+const AYS=["\u05ea\u05e9\u05e4\u05f4\u05d6","\u05ea\u05e9\u05e4\u05f4\u05d7","\u05ea\u05e9\u05e4\u05f4\u05d8","\u05ea\u05e9\u05f4\u05e5","\u05ea\u05e9\u05e6\u05f4\u05d0"];
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
 const mk=(c,l,ss,sha,nt,zm,s,e)=>({course:c,lec:l||"",ss:ss||0,sha:sha||0,notes:nt||"",zoom:!!zm,startH:s,endH:e});
 
-const SCHED={
+const SCHED_DEFAULT={
   y1a:{
-    ראשון:[mk("פיזיקה כללית","נעוס אריאל",2,1,"",false,9,11),mk("פיזיקה כללית — תרגיל","",1,.5,"",false,11,12),mk("כימיה כללית ופיזיקאלית — הרצאה","חנן טלר",4,2,"",false,12,14),mk("כשרות המזון","אברהם אופיר שמש",2,1,"",false,14,16),mk("תולדות המזון","",2,1,"",false,16,18)],
-    שני:[mk("מתמטיקה למדעי הבריאות — הרצאה","דרפל הלנה",2,1,"",false,9,11),mk("מתמטיקה למדעי הבריאות — תרגיל","",2,1,"",false,11,13),mk("כימיה כללית ופיזיקאלית — הרצאה","חנן טלר",4,2,"",false,13,15),mk("כימיה כללית ופיזיקאלית — תרגיל","",2,1,"",false,15,17)],
-    שלישי:[mk("ביולוגיה של התא","יפתח שקד",2,1,"",false,9,11),mk("תזונה וסביבה","אסף",2,1,"",false,11,13),mk("סטטיסטיקה למדעי הבריאות — הרצאה","מונה",2,1,"",false,13,15),mk("סטטיסטיקה למדעי הבריאות — תרגיל","אביגיל",1,.5,"",false,15,16)],
+    ראשון:[mk("פיזיקה כללית","נעוס אריאל",2,1,"",false,9,11),mk("פיזיקה כללית תרגיל","",1,.5,"",false,11,12),mk("כימיה כללית ופיזיקאלית הרצאה","חנן טלר",4,2,"",false,12,14),mk("כשרות המזון","אברהם אופיר שמש",2,1,"",false,14,16),mk("תולדות המזון","",2,1,"",false,16,18)],
+    שני:[mk("מתמטיקה למדעי הבריאות הרצאה","דרפל הלנה",2,1,"",false,9,11),mk("מתמטיקה למדעי הבריאות תרגיל","",2,1,"",false,11,13),mk("כימיה כללית ופיזיקאלית הרצאה","חנן טלר",4,2,"",false,13,15),mk("כימיה כללית ופיזיקאלית תרגיל","",2,1,"",false,15,17)],
+    שלישי:[mk("ביולוגיה של התא","יפתח שקד",2,1,"",false,9,11),mk("תזונה וסביבה","אסף",2,1,"",false,11,13),mk("סטטיסטיקה למדעי הבריאות הרצאה","מונה",2,1,"",false,13,15),mk("סטטיסטיקה למדעי הבריאות תרגיל","אביגיל",1,.5,"",false,15,16)],
     רביעי:[mk("תצפית במרפאות","כרמית",3.23,1.61,"",false,9,13)],
     חמישי:[mk("מעבדה בכימיה כללית ופיזיקלית","",2,1,"אחת לשבועיים",false,9,13)],
   },
-  y1b:{ראשון:[],שני:[mk("אנטומיה ופיזיולוגיה של מערכות הגוף א'","חגית",3,1.5,"",false,9,12),mk("כימיה אורגנית — הרצאה","",3,1.5,"",false,12,15)],שלישי:[mk("סטטיסטיקה בניסויים — הרצאה","מונה",3,1.5,"",false,8,11),mk("תזונה, טכנולוגיה ותעשיה","רוני",2,1,"",false,11,13),mk("פסיכולוגיה כללית","גיל צוקרמן",2,1,"היברידי",false,13,15),mk("סטטיסטיקה בניסויים — תרגיל","",1,.5,"",false,15,16)],רביעי:[mk("כימיה אורגנית — תרגיל","",2,1,"",false,9,12),mk("כתיבה וקריאה מודרכת","רוני",2,1,"",false,12,14),mk("מבוא לתזונה","רוני",2,1,"",false,14,16),mk("כלכלת בריאות","אריאל לוי ניסנבוים",2,1,"",false,16,18)],חמישי:[mk("מעבדה בכימיה אורגנית","",2,1,"אחת לשבועיים",false,9,13)]},
-  y2a:{ראשון:[mk("התנסות ביזמות ומחקר (אביגיל) / סיורים (חגית) — לסירוגין","אביגיל",4.2,2.1,"לסירוגין",false,8,14)],שני:[mk("תורת ההורמונים","חגית",2,1,"",false,9,11),mk("פתו פיזיולוגיה של מחלות א'","גדי תורג'מן",3,1.5,"",false,11,14),mk("פרמקולוגיה","פיטליק נינה",2,1,"",false,14,16)],שלישי:[mk("יסודות הגנטיקה — הרצאה","רות",2,1,"",false,9,11),mk("יסודות הגנטיקה — תרגיל","",2,1,"",false,11,13),mk("מבוא לאפידמיולוגיה","אסף",2,1,"",false,13,15),mk("מבוא למיקרוביולוגיה","",2,1,"",false,15,17)],רביעי:[mk("אנטומיה ופיזיולוגיה של מערכות בגוף ב'","חגית",3,1.5,"",false,8,11),mk("הפרעות אכילה","רוני",2,1,"",false,11,13),mk("מעבדה בביוכימיה","",2,1,"אחת לשבועיים",false,13,17)],חמישי:[mk("ביוכימיה וביולוגיה מולקולרית א' — שיעור","גדי תורג'מן",3,1.5,"",false,9,12),mk("ביוכימיה וביולוגיה מולקולרית א' — תרגיל","",1,.5,"",false,12,13),mk("הטיפול באדם עם מגבלויות","",2,1,"בחירה זום",true,17,18)]},
-  y2b:{ראשון:[mk("תזונת האדם א' — מאקרו","חגית",3,1.5,"",false,8,11),mk("פתו פיזיולוגיה של מחלות ב'","גדי תורג'מן",2,1,"",false,11,13),mk("מעבדה בביולוגיה מולקולרית","",2,1,"אחת לשבועיים",false,13,17)],שני:[mk("מבוא לדיאטטיקה — הרצאה","ורד",2.5,1.25,"",false,9,12),mk("מבוא לדיאטטיקה — תרגיל","",1,.5,"",false,12,13),mk("תזונת האדם א' — תרגיל","",1,.5,"",false,13,14),mk("תזונת האדם — מעבדה","",2,1,"אחת לשבועיים",false,14,18)],שלישי:[mk("ביוכימיה וביולוגיה מולקולרית ב' — תרגיל","",1,.5,"",false,9,10),mk("ביוכימיה וביולוגיה מולקולרית ב' — שיעור","אשרת רוקח",3,1.5,"",false,10,13),mk("היבטים כימיים, פיזיקאליים ורגולטוריים","רונית יערי",2,1,"",false,13,15)],רביעי:[mk("תזונה בבריאות הציבור","ורד",2,1,"",false,9,11),mk("משק המים והמינראלים בגוף","חגית",2,1,"",false,11,13),mk("תזונת האדם ב' — מיקרו","חגית",3,1.5,"",false,13,16),mk("תזונת האדם ב' — תרגיל","",1,.5,"",false,16,17)],חמישי:[mk("עזרה ראשונה","",0,0,"קורס חובה",false,9,10)]},
-  y3a:{ראשון:[mk("השמנה","שירי",2,1,"",false,9,11),mk("ביוכימיה קלינית","שי אשכנזי",2,1,"",false,11,13),mk("תזונת ספורט","מירי חדד",2,1,"",false,13,15),mk("תזונה בגיל המבוגר","אסף",2,1,"",false,15,17)],שני:[mk("דיאטטיקה א' — סדנה","קרן",2.5,1.25,"",false,8,12),mk("דיאטטיקה א' — שיעור","קרן",2.5,1.25,"",false,12,16),mk("מיקרוביולוגיה ובטיחות מזון — הרצאה","חגית",2,1,"",false,16,18)],שלישי:[mk("מיקרוביולוגיה מעבדה (חגית 9-13) / תורת המזון מעבדה (אורית יונה 9-15) — לסירוגין","",2,1,"לסירוגין",false,9,15)],רביעי:[],חמישי:[mk("קורס מלווה בריאות ציבור","כרמית",2,1,"4 מפגשים",false,9,16)]},
-  y3b:{ראשון:[mk("מעבדה בקולינריה (לורה) / תזונת ילדים (אביגיל) — לסירוגין","אביגיל",3,1.5,"לסירוגין",false,9,15)],שני:[mk("דיאטטיקה ב' — סדנה","קרן",2.5,1.25,"",false,8,12),mk("דיאטטיקה ב' — שיעור","קרן",2.5,1.25,"",false,12,16),mk("אימונולוגיה","",2,1,"",false,16,18)],שלישי:[mk("בקרה פיזיולוגית של משק האנרגיה","טובית רוזנצוויג",2,1,"",false,8,10),mk("שיטות סקר ומחקר בתזונה","קרן",4,2,"",false,10,14),mk("תורת הראיון — סדנה","אביגיל",2,1,"",false,14,16),mk("סמינריון","רוני",2,1,"",false,16,18)],רביעי:[],חמישי:[mk("קורס מלווה מרפאות","",2,1,"4 מפגשים",false,9,16)]},
+  y1b:{ראשון:[],שני:[mk("אנטומיה ופיזיולוגיה של מערכות הגוף א","חגית",3,1.5,"",false,9,12),mk("כימיה אורגנית הרצאה","",3,1.5,"",false,12,15)],שלישי:[mk("סטטיסטיקה בניסויים הרצאה","מונה",3,1.5,"",false,8,11),mk("תזונה טכנולוגיה ותעשיה","רוני",2,1,"",false,11,13),mk("פסיכולוגיה כללית","גיל צוקרמן",2,1,"היברידי",false,13,15),mk("סטטיסטיקה בניסויים תרגיל","",1,.5,"",false,15,16)],רביעי:[mk("כימיה אורגנית תרגיל","",2,1,"",false,9,12),mk("כתיבה וקריאה מודרכת","רוני",2,1,"",false,12,14),mk("מבוא לתזונה","רוני",2,1,"",false,14,16),mk("כלכלת בריאות","אריאל לוי ניסנבוים",2,1,"",false,16,18)],חמישי:[mk("מעבדה בכימיה אורגנית","",2,1,"אחת לשבועיים",false,9,13)]},
+  y2a:{ראשון:[mk("התנסות ביזמות ומחקר (אביגיל) / סיורים (חגית) לסירוגין","אביגיל",4.2,2.1,"לסירוגין",false,8,14)],שני:[mk("תורת ההורמונים","חגית",2,1,"",false,9,11),mk("פתו פיזיולוגיה של מחלות א","גדי תורגמן",3,1.5,"",false,11,14),mk("פרמקולוגיה","פיטליק נינה",2,1,"",false,14,16)],שלישי:[mk("יסודות הגנטיקה הרצאה","רות",2,1,"",false,9,11),mk("יסודות הגנטיקה תרגיל","",2,1,"",false,11,13),mk("מבוא לאפידמיולוגיה","אסף",2,1,"",false,13,15),mk("מבוא למיקרוביולוגיה","",2,1,"",false,15,17)],רביעי:[mk("אנטומיה ופיזיולוגיה של מערכות בגוף ב","חגית",3,1.5,"",false,8,11),mk("הפרעות אכילה","רוני",2,1,"",false,11,13),mk("מעבדה בביוכימיה","",2,1,"אחת לשבועיים",false,13,17)],חמישי:[mk("ביוכימיה וביולוגיה מולקולרית א שיעור","גדי תורגמן",3,1.5,"",false,9,12),mk("ביוכימיה וביולוגיה מולקולרית א תרגיל","",1,.5,"",false,12,13),mk("הטיפול באדם עם מגבלויות","",2,1,"בחירה זום",true,17,18)]},
+  y2b:{ראשון:[mk("תזונת האדם א מאקרו","חגית",3,1.5,"",false,8,11),mk("פתו פיזיולוגיה של מחלות ב","גדי תורגמן",2,1,"",false,11,13),mk("מעבדה בביולוגיה מולקולרית","",2,1,"אחת לשבועיים",false,13,17)],שני:[mk("מבוא לדיאטטיקה הרצאה","ורד",2.5,1.25,"",false,9,12),mk("מבוא לדיאטטיקה תרגיל","",1,.5,"",false,12,13),mk("תזונת האדם א תרגיל","",1,.5,"",false,13,14),mk("תזונת האדם מעבדה","",2,1,"אחת לשבועיים",false,14,18)],שלישי:[mk("ביוכימיה וביולוגיה מולקולרית ב תרגיל","",1,.5,"",false,9,10),mk("ביוכימיה וביולוגיה מולקולרית ב שיעור","אשרת רוקח",3,1.5,"",false,10,13),mk("היבטים כימיים פיזיקאליים ורגולטוריים","רונית יערי",2,1,"",false,13,15)],רביעי:[mk("תזונה בבריאות הציבור","ורד",2,1,"",false,9,11),mk("משק המים והמינראלים בגוף","חגית",2,1,"",false,11,13),mk("תזונת האדם ב מיקרו","חגית",3,1.5,"",false,13,16),mk("תזונת האדם ב תרגיל","",1,.5,"",false,16,17)],חמישי:[mk("עזרה ראשונה","",0,0,"קורס חובה",false,9,10)]},
+  y3a:{ראשון:[mk("השמנה","שירי",2,1,"",false,9,11),mk("ביוכימיה קלינית","שי אשכנזי",2,1,"",false,11,13),mk("תזונת ספורט","מירי חדד",2,1,"",false,13,15),mk("תזונה בגיל המבוגר","אסף",2,1,"",false,15,17)],שני:[mk("דיאטטיקה א סדנה","קרן",2.5,1.25,"",false,8,12),mk("דיאטטיקה א שיעור","קרן",2.5,1.25,"",false,12,16),mk("מיקרוביולוגיה ובטיחות מזון הרצאה","חגית",2,1,"",false,16,18)],שלישי:[mk("מיקרוביולוגיה מעבדה (חגית 9-13) / תורת המזון מעבדה (אורית יונה 9-15) לסירוגין","",2,1,"לסירוגין",false,9,15)],רביעי:[],חמישי:[mk("קורס מלווה בריאות ציבור","כרמית",2,1,"4 מפגשים",false,9,16)]},
+  y3b:{ראשון:[mk("מעבדה בקולינריה (לורה) / תזונת ילדים (אביגיל) לסירוגין","אביגיל",3,1.5,"לסירוגין",false,9,15)],שני:[mk("דיאטטיקה ב סדנה","קרן",2.5,1.25,"",false,8,12),mk("דיאטטיקה ב שיעור","קרן",2.5,1.25,"",false,12,16),mk("אימונולוגיה","",2,1,"",false,16,18)],שלישי:[mk("בקרה פיזיולוגית של משק האנרגיה","טובית רוזנצוויג",2,1,"",false,8,10),mk("שיטות סקר ומחקר בתזונה","קרן",4,2,"",false,10,14),mk("תורת הראיון סדנה","אביגיל",2,1,"",false,14,16),mk("סמינריון","רוני",2,1,"",false,16,18)],רביעי:[],חמישי:[mk("קורס מלווה מרפאות","",2,1,"4 מפגשים",false,9,16)]},
   y4a:EM(),y4b:EM(),
-  m1a:{ראשון:[],שני:[],שלישי:[mk("סטטיסטיקה לתואר שני","מונה",1,.5,"מונה / לאה",false,9,11),mk("סטטיסטיקה לתואר שני — תרגיל","",1,.5,"",false,11,13),mk("מדידת צריכה תזונתית","אביגיל",2,1,"",false,13,15),mk("אכילה הדונית והתמכרות","רוני",2,1,"",false,15,17)],רביעי:[],חמישי:[]},
-  m1b:{ראשון:[],שני:[],שלישי:[mk("תזונה מולקולרית וגנטית","רות",2,1,"",false,9,11),mk("סמינריון במטבוליזם","אסף",2,1,"",false,11,13),mk("שיטות מחקר מתקדמות","מונה",2,1,"",false,13,15),mk("סמינריון: ניהול וניתוח נתונים","קרן",2,1,"",false,15,17)],רביעי:[],חמישי:[]},
+  m1a:{ראשון:[],שני:[],שלישי:[mk("סטטיסטיקה לתואר שני","מונה",1,.5,"מונה / לאה",false,9,11),mk("סטטיסטיקה לתואר שני תרגיל","",1,.5,"",false,11,13),mk("מדידת צריכה תזונתית","אביגיל",2,1,"",false,13,15),mk("אכילה הדונית והתמכרות","רוני",2,1,"",false,15,17)],רביעי:[],חמישי:[]},
+  m1b:{ראשון:[],שני:[],שלישי:[mk("תזונה מולקולרית וגנטית","רות",2,1,"",false,9,11),mk("סמינריון במטבוליזם","אסף",2,1,"",false,11,13),mk("שיטות מחקר מתקדמות","מונה",2,1,"",false,13,15),mk("סמינריון ניהול וניתוח נתונים","קרן",2,1,"",false,15,17)],רביעי:[],חמישי:[]},
   m2a:{ראשון:[],שני:[],שלישי:[],רביעי:[mk("Scientific writing","ורד",2,1,"",false,9,11),mk("טרנזיציה תזונתית","ורד",2,1,"",false,11,13),mk("תיקוף ותרגום שאלונים","שירי",2,1,"זום",true,13,15),mk("אפידמיולוגיה של גורמי סיכון","אסף",2,1,"",false,15,17),mk("תזה","",0,0,"",false,19,20)],חמישי:[]},
   m2b:{ראשון:[],שני:[],שלישי:[],רביעי:[mk("סדנת מחקר מתקדם","רות",2,1,"",false,9,11),mk("תרגום ידע מדעי בתזונה","ורד",2,1,"",false,11,13),mk("תזונה בהריון ועד ילדות מוקדמת","אביגיל",2,1,"",false,13,15)],חמישי:[]},
 };
 
-function exportPDF(yid,data,label,acY){
-  const yd=data[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const zD=tab&&tab.zoomDays?tab.zoomDays:[];
+// Default banner per year-tab
+const DEFAULT_BANNERS={
+  "y1a":"לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל (1 שס)"
+};
+
+function exportPDF(yid,data,banners,label,acY){
+  const yd=data[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const zD=tab?tab.zD:[];
   const occ={};DAYS.forEach(day=>{occ[day]={};(yd[day]||[]).forEach(c=>{const sp=c.endH-c.startH;occ[day][c.startH]={span:sp,cell:c};for(let i=1;i<sp;i++)occ[day][c.startH+i]={skip:true};});});
   let rows="";
   for(let hh=HS;hh<HE;hh++){
     let cols='<td class="tc">'+String(hh).padStart(2,"0")+':00</td>';
-    DAYS.forEach(day=>{
-      const o=occ[day][hh];
-      if(o&&o.skip)return;
-      if(!o){cols+='<td></td>';return;}
-      const c=o.cell;const st=c.lec&&CL[c.lec]?CL[c.lec]:{c:"#6B7280",bg:"#F3F4F6"};
-      const isZ=c.zoom&&!zD.includes(day);
-      cols+='<td rowspan="'+o.span+'" style="padding:2px"><div style="border-radius:5px;padding:4px;height:100%;min-height:34px;background:'+st.bg+';border-right:3px solid '+st.c+';font-size:10px;display:flex;flex-direction:column;justify-content:center;overflow:hidden">'+(isZ?'<span style="font-size:8px;color:#0369A1;font-weight:700">ZOOM</span>':'')+'<div style="font-weight:700;color:'+st.c+';line-height:1.3">'+c.course+'</div>'+(c.lec?'<div style="color:#6B7280;font-size:9px">'+c.lec+'</div>':'')+'</div></td>';
-    });
+    DAYS.forEach(day=>{const o=occ[day][hh];if(o&&o.skip)return;if(!o){cols+='<td></td>';return;}const c=o.cell;const st=c.lec&&CL[c.lec]?CL[c.lec]:{c:"#6B7280",bg:"#F3F4F6"};cols+='<td rowspan="'+o.span+'" style="padding:2px"><div style="border-radius:5px;padding:4px;height:100%;background:'+st.bg+';border-right:3px solid '+st.c+';font-size:10px;display:flex;flex-direction:column;justify-content:center;overflow:hidden">'+(c.zoom&&!zD.includes(day)?'<span style="font-size:8px;color:#0369A1;font-weight:700">ZOOM</span>':'')+'<div style="font-weight:700;color:'+st.c+'">'+c.course+'</div>'+(c.lec?'<div style="color:#6B7280;font-size:9px">'+c.lec+'</div>':'')+'</div></td>';});
     rows+='<tr>'+cols+'</tr>';
   }
-  const preSem=tab&&tab.preSem?'<div style="background:#DBEAFE;border-right:4px solid #1E3A8A;border-radius:7px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#1E3A8A;font-weight:600">'+tab.preSem+'</div>':"";
+  const banner=(banners&&banners[yid])||"";
+  const bHtml=banner?'<div style="background:#DBEAFE;border-right:4px solid #1E3A8A;border-radius:7px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#1E3A8A;font-weight:600">'+banner+'</div>':"";
   const legend=Object.entries(CL).map(([n,l])=>'<span style="display:inline-flex;align-items:center;gap:3px;margin:2px 5px;font-size:9px"><span style="width:8px;height:8px;border-radius:50%;background:'+l.c+';display:inline-block"></span>'+n+'</span>').join("");
-  const win=window.open("","_blank","width=1200,height=900");
+  const win=window.open("","_blank");
   if(!win){alert("אפשר חלוניות קופצות");return;}
-  win.document.write('<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:16px;font-size:11px}h1{font-size:15px;color:#3B0764;text-align:center;margin-bottom:3px}.sub{text-align:center;color:#6B7280;font-size:10px;margin-bottom:10px}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#F5F3FF;color:#5B21B6;font-size:11px;font-weight:700;padding:6px 3px;border:1px solid #DDD6FE;text-align:center}th.z{background:#DBEFFE;color:#0369A1}td{border:1px solid #E5E7EB;vertical-align:top;height:38px}.tc{background:#FAFAFA;color:#9CA3AF;font-size:10px;text-align:center;vertical-align:middle;width:8%}@media print{@page{size:A4 landscape;margin:1cm}.np{display:none}}</style></head><body><h1>המחלקה למדעי התזונה — אוניברסיטת אריאל</h1><div class="sub">'+label+' | '+acY+'</div>'+preSem+'<table><thead><tr><th style="width:8%">שעה</th>'+DAYS.map(d=>'<th class="'+(zD.includes(d)?"z":"")+'">'+d+(zD.includes(d)?" ZOOM":"")+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table><div style="margin-top:8px">'+legend+'</div><div style="margin-top:6px;font-size:9px;color:#9CA3AF;text-align:center">הופק '+new Date().toLocaleDateString("he-IL")+'</div><div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / שמור PDF</button></div></body></html>');
+  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:16px;font-size:11px}h1{font-size:15px;color:#3B0764;text-align:center;margin-bottom:3px}.sub{text-align:center;color:#6B7280;font-size:10px;margin-bottom:10px}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#F5F3FF;color:#5B21B6;font-size:11px;font-weight:700;padding:6px 3px;border:1px solid #DDD6FE;text-align:center}th.z{background:#DBEFFE;color:#0369A1}td{border:1px solid #E5E7EB;vertical-align:top;height:38px}.tc{background:#FAFAFA;color:#9CA3AF;font-size:10px;text-align:center;vertical-align:middle;width:8%}@media print{@page{size:A4 landscape;margin:1cm}.np{display:none}}</style></head><body><h1>המחלקה למדעי התזונה - אריאל</h1><div class="sub">'+label+' | '+acY+'</div>'+bHtml+'<table><thead><tr><th style="width:8%">שעה</th>'+DAYS.map(d=>'<th class="'+(zD.includes(d)?"z":"")+'">'+d+(zD.includes(d)?" ZOOM":"")+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table><div style="margin-top:8px">'+legend+'</div><div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
   win.document.close();
 }
 
 function getConflicts(data){
-  const m={};
-  YTABS.forEach(t=>{const yd=data[t.id];if(!yd)return;const sem=t.id.slice(-1);DAYS.forEach(day=>{(yd[day]||[]).forEach(c=>{if(!c||!c.lec)return;for(let hh=c.startH;hh<c.endH;hh++){const k=sem+"|"+c.lec+"|"+day+"|"+hh;if(!m[k])m[k]=[];m[k].push({yid:t.id,course:c.course,startH:c.startH});}});});});
+  const m={};YTABS.forEach(t=>{const yd=data[t.id];if(!yd)return;const sem=t.id.slice(-1);DAYS.forEach(day=>{(yd[day]||[]).forEach(c=>{if(!c||!c.lec)return;for(let hh=c.startH;hh<c.endH;hh++){const k=sem+"|"+c.lec+"|"+day+"|"+hh;if(!m[k])m[k]=[];m[k].push({yid:t.id,course:c.course,startH:c.startH});}});});});
   const seen=new Set();
   return Object.entries(m).filter(([,s])=>s.length>1).map(([k,slots])=>{const[sem,lec,day]=k.split("|");const uk=sem+"|"+lec+"|"+day+"|"+slots[0].startH;if(seen.has(uk))return null;seen.add(uk);return{sem,lec,day,slots};}).filter(Boolean);
 }
 
-function Grid({yid,data,cSet,onEdit}){
+function Grid({yid,data,banners,cSet,onEdit,onBannerEdit}){
   const yd=data[yid]||EM();const tab=YTABS.find(t=>t.id===yid);
   const totalH=NH*RH;const toY=hh=>(hh-HS)*RH;
+  const banner=(banners&&banners[yid])||"";
   return h("div",null,
-    tab&&tab.fut&&h("div",{style:{background:"#FFF7ED",border:"1.5px solid #FED7AA",borderRadius:10,padding:"10px 14px",margin:"10px 10px 0",display:"flex",alignItems:"center",gap:8}},h("span",{style:{fontSize:13}},"🔜"),h("div",null,h("div",{style:{fontWeight:700,color:"#92400E",fontSize:12}},"הכנה לשנה הבאה"),h("div",{style:{color:"#B45309",fontSize:10}},"ריק — ניתן לשבץ קורסים"))),
-    tab&&tab.preSem&&h("div",{style:{margin:"10px 10px 0",background:CL["אביגיל"].bg,border:"1.5px solid "+CL["אביגיל"].c+"40",borderRight:"4px solid "+CL["אביגיל"].c,borderRadius:10,padding:"9px 14px",display:"flex",alignItems:"center",gap:10}},
-      h("span",{style:{fontSize:15}},"📌"),h("span",{style:{fontWeight:700,color:CL["אביגיל"].c,fontSize:12}},tab.preSem)),
-    h("div",{style:{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 210px)"}},
+    tab&&tab.fut&&h("div",{style:{background:"#FFF7ED",border:"1.5px solid #FED7AA",borderRadius:10,padding:"10px 14px",margin:"10px 10px 0",display:"flex",alignItems:"center",gap:8}},
+      h("span",{style:{fontSize:13}},"🔜"),h("div",null,h("div",{style:{fontWeight:700,color:"#92400E",fontSize:12}},"הכנה לשנה הבאה"),h("div",{style:{color:"#B45309",fontSize:10}},"ריק - ניתן לשבץ קורסים"))),
+    h("div",{style:{margin:"10px 10px 0",background:"#DBEAFE",border:"1.5px solid #1E3A8A40",borderRight:"4px solid #1E3A8A",borderRadius:10,padding:"8px 14px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"},onClick:()=>onBannerEdit(yid,banner)},
+      h("span",{style:{fontSize:14}},"📌"),
+      h("span",{style:{fontWeight:700,color:"#1E3A8A",fontSize:12,flex:1}},banner||"לחץ להוספת הערה לפני הסמסטר..."),
+      h("span",{style:{fontSize:11,color:"#1E3A8A",opacity:.6}},"✏️")),
+    h("div",{style:{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 220px)"}},
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)",position:"sticky",top:0,zIndex:20,background:"#F5F3FF",borderBottom:"2px solid #DDD6FE"}},
         h("div",{style:{height:44,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#5B21B6"}},"שעה"),
-        DAYS.map(d=>{const isZ=tab&&tab.zoomDays&&tab.zoomDays.includes(d);return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:1}},h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),isZ&&h("span",{style:{fontSize:9,fontWeight:700,color:"#fff",background:"#0369A1",borderRadius:99,padding:"1px 6px"}},"ZOOM"));})),
+        DAYS.map(d=>{const isZ=tab&&tab.zD&&tab.zD.includes(d);return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:1}},h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),isZ&&h("span",{style:{fontSize:9,fontWeight:700,color:"#fff",background:"#0369A1",borderRadius:99,padding:"1px 6px"}},"ZOOM"));})),
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)"}},
         h("div",{style:{position:"relative",height:totalH,borderRight:"1px solid #E5E7EB"}},
-          Array.from({length:NH},(_,i)=>[
-            h("div",{key:"b"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid #F3F4F6",background:i%2?"#FAFAFA":"#fff"}}),
-            h("div",{key:"l"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,zIndex:1,pointerEvents:"none"}},HLBLS[i])
-          ]).flat()),
+          Array.from({length:NH},(_,i)=>[h("div",{key:"b"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid #F3F4F6",background:i%2?"#FAFAFA":"#fff"}}),h("div",{key:"l"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,zIndex:1,pointerEvents:"none"}},HLBLS[i])]).flat()),
         DAYS.map(day=>{
-          const courses=yd[day]||[];
-          const isDZ=tab&&tab.zoomDays&&tab.zoomDays.includes(day);
+          const courses=yd[day]||[];const isDZ=tab&&tab.zD&&tab.zD.includes(day);
           return h("div",{key:day,style:{position:"relative",height:totalH,borderRight:"1px solid #F3F4F6",background:isDZ?"#F0F8FF":undefined}},
             Array.from({length:NH},(_,i)=>h("div",{key:i,onClick:()=>onEdit(day,HS+i,null),style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid "+(isDZ?"#BFDBFE":"#F3F4F6"),background:isDZ?(i%2?"#EFF8FF":"#F5FBFF"):(i%2?"#FAFAFA":"#fff"),cursor:"pointer"}})),
             Array.from({length:NH},(_,i)=>{const hh=HS+i;if(courses.some(c=>c.startH<=hh&&c.endH>hh))return null;return h("div",{key:"p"+i,onClick:()=>onEdit(day,hh,null),style:{position:"absolute",top:i*RH+1,left:2,right:2,height:RH-2,borderRadius:5,border:"1px dashed "+(isDZ?"#93C5FD":"#DDD6FE"),cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:isDZ?"#93C5FD":"#C4B5FD",fontSize:14,zIndex:1},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="transparent"}," + ");}),
             courses.map((cell,ci)=>{
               const topPx=toY(cell.startH),hPx=(cell.endH-cell.startH)*RH,st=lc(cell.lec);
               const isC=cSet.has(yid.slice(-1)+"|"+cell.lec+"|"+day+"|"+cell.startH);
-              const showZB=cell.zoom&&!isDZ;
               return h("div",{key:ci,onClick:()=>onEdit(day,cell.startH,cell),style:{position:"absolute",top:topPx+1,left:2,right:2,height:hPx-2,borderRadius:7,padding:"6px 8px",cursor:"pointer",background:isC?"#FEF2F2":st.bg,borderRight:"3px solid "+(isC?"#EF4444":st.c),border:"1px solid "+(isC?"#FCA5A5":st.c)+"22",zIndex:2,boxSizing:"border-box",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center"},onMouseEnter:e=>e.currentTarget.style.opacity="0.82",onMouseLeave:e=>e.currentTarget.style.opacity="1"},
                 isC&&h("span",{style:{position:"absolute",top:3,left:4,fontSize:9,color:"#EF4444"}},"⚠"),
-                showZB&&h("span",{style:{position:"absolute",top:3,right:4,fontSize:8,color:"#0369A1",fontWeight:700,background:"#DBEAFE",borderRadius:3,padding:"0 3px"}},"ZOOM"),
+                cell.zoom&&!isDZ&&h("span",{style:{position:"absolute",top:3,right:4,fontSize:8,color:"#0369A1",fontWeight:700,background:"#DBEAFE",borderRadius:3,padding:"0 3px"}},"ZOOM"),
                 cell.notes&&!cell.zoom&&h("span",{title:cell.notes,style:{position:"absolute",bottom:3,left:4,fontSize:9}},"💬"),
                 h("div",{style:{fontSize:11,fontWeight:700,color:isC?"#991B1B":st.c,lineHeight:1.3}},cell.course),
                 cell.lec&&h("div",{style:{fontSize:10,color:"#6B7280",marginTop:2}},cell.lec));
@@ -182,74 +187,123 @@ function EditModal({day,startH,cell,yid,onSave,onDelete,onClose}){
     h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
     h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:22,width:440,maxWidth:"94vw",maxHeight:"90vh",overflowY:"auto",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
       h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
-        h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:"#3B0764",marginBottom:2}},cell?"עריכת קורס":"הוספת קורס"),h("div",{style:{fontSize:10,color:"#9CA3AF"}},day+" · "+fmtH(startH)+" · "+(tab?tab.lbl:""))),
+        h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:"#3B0764",marginBottom:2}},cell?"עריכת קורס":"הוספת קורס"),h("div",{style:{fontSize:10,color:"#9CA3AF"}},day+" - "+(tab?tab.lbl:""))),
         h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
       h("div",{style:{marginBottom:11}},h("label",{style:L},"שם הקורס"),h("input",{className:"inp",value:f.course,onChange:e=>set("course",e.target.value),placeholder:"שם הקורס..."})),
-      h("div",{style:{marginBottom:11}},h("label",{style:L},"מרצה"),
-        h("select",{className:"inp",value:f.lec,onChange:e=>set("lec",e.target.value)},
-          h("option",{value:""},"— ללא מרצה —"),
-          h("optgroup",{label:"סגל קבוע"},Object.keys(CL).map(n=>h("option",{key:n,value:n},n))),
-          h("option",{value:"יקבע בהמשך"},"יקבע בהמשך"))),
+      h("div",{style:{marginBottom:11}},h("label",{style:L},"מרצה"),h("select",{className:"inp",value:f.lec,onChange:e=>set("lec",e.target.value)},h("option",{value:""},"ללא מרצה"),h("optgroup",{label:"סגל קבוע"},Object.keys(CL).map(n=>h("option",{key:n,value:n},n))),h("option",{value:"יקבע בהמשך"},"יקבע בהמשך"))),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:11}},
         h("div",null,h("label",{style:L},"שעת התחלה"),h("select",{className:"inp",value:f.startH,onChange:e=>set("startH",+e.target.value)},hopts.slice(0,-1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho))))),
         h("div",null,h("label",{style:L},"שעת סיום"),h("select",{className:"inp",value:f.endH,onChange:e=>set("endH",+e.target.value)},hopts.slice(1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho)))))),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:11}},
-        h("div",null,h("label",{style:L},"ש״ס"),h("input",{className:"inp",type:"number",step:".5",min:"0",value:f.ss,onChange:e=>{const v=+e.target.value||0;set("ss",v);set("sha",+(v/2).toFixed(4));}})),
-        h("div",null,h("label",{style:L},"ש״ש"),h("input",{className:"inp",type:"number",step:".25",min:"0",value:f.sha,onChange:e=>set("sha",+e.target.value||0)}))),
-      h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:11}},
-        h("input",{type:"checkbox",id:"zm",checked:!!f.zoom,onChange:e=>set("zoom",e.target.checked),style:{width:14,height:14}}),
-        h("label",{htmlFor:"zm",style:{fontSize:12}},"זום / היברידי")),
-      h("div",{style:{marginBottom:16}},h("label",{style:L},"הערות"),
-        h("textarea",{className:"inp",value:f.notes,onChange:e=>set("notes",e.target.value),rows:2,style:{resize:"vertical",fontFamily:"inherit"},placeholder:"הערות..."})),
+        h("div",null,h("label",{style:L},"שס"),h("input",{className:"inp",type:"number",step:".5",min:"0",value:f.ss,onChange:e=>{const v=+e.target.value||0;set("ss",v);set("sha",+(v/2).toFixed(4));}})),
+        h("div",null,h("label",{style:L},"שש"),h("input",{className:"inp",type:"number",step:".25",min:"0",value:f.sha,onChange:e=>set("sha",+e.target.value||0)}))),
+      h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:11}},h("input",{type:"checkbox",id:"zm",checked:!!f.zoom,onChange:e=>set("zoom",e.target.checked),style:{width:14,height:14}}),h("label",{htmlFor:"zm",style:{fontSize:12}},"זום / היברידי")),
+      h("div",{style:{marginBottom:16}},h("label",{style:L},"הערות"),h("textarea",{className:"inp",value:f.notes,onChange:e=>set("notes",e.target.value),rows:2,style:{resize:"vertical"},placeholder:"הערות..."})),
       h("div",{style:{display:"flex",gap:8}},
         h("button",{onClick:()=>onSave(day,f),style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
         cell&&h("button",{onClick:()=>onDelete(day,cell),style:{padding:"11px 16px",borderRadius:9,border:"1.5px solid #EF4444",background:"#FEF2F2",color:"#EF4444",fontSize:13,fontWeight:700}},"מחק"))));
 }
 
-function StatsPanel(){
-  const[sd,setSd]=useState(()=>{try{const s=localStorage.getItem("sd_v3");if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(STAFF_BASE));});
-  const upC=(nm,ci,v)=>setSd(prev=>{const n=JSON.parse(JSON.stringify(prev));n[nm].courses[ci].ss=parseFloat(v)||0;n[nm].ss=+(n[nm].courses.reduce((a,c)=>a+c.ss,0)+(n[nm].bonuses||[]).reduce((a,b)=>a+b.ss,0)).toFixed(3);n[nm].sha=+(n[nm].ss/2).toFixed(3);localStorage.setItem("sd_v3",JSON.stringify(n));return n;});
-  const upB=(nm,bi,v)=>setSd(prev=>{const n=JSON.parse(JSON.stringify(prev));n[nm].bonuses[bi].ss=parseFloat(v)||0;n[nm].ss=+(n[nm].courses.reduce((a,c)=>a+c.ss,0)+n[nm].bonuses.reduce((a,b)=>a+b.ss,0)).toFixed(3);n[nm].sha=+(n[nm].ss/2).toFixed(3);localStorage.setItem("sd_v3",JSON.stringify(n));return n;});
+function BannerModal({yid,current,onSave,onClose}){
+  const[txt,setTxt]=useState(current||"");
+  return h("div",{style:{position:"relative",zIndex:50}},
+    h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
+    h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:22,width:420,maxWidth:"94vw",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+        h("div",{style:{fontWeight:700,fontSize:14,color:"#1E3A8A"}},"עריכת הערה לפני הסמסטר"),
+        h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
+      h("textarea",{className:"inp",value:txt,onChange:e=>setTxt(e.target.value),rows:3,style:{resize:"vertical",marginBottom:14},placeholder:"לדוגמה: לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל (1 שס)"}),
+      h("div",{style:{display:"flex",gap:8}},
+        h("button",{onClick:()=>onSave(yid,txt),style:{flex:1,padding:"10px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#1E3A8A,#3B0764)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
+        h("button",{onClick:()=>onSave(yid,""),style:{padding:"10px 14px",borderRadius:9,border:"1px solid #E5E7EB",background:"#fff",color:"#6B7280",fontSize:13}},"מחק"))));
+}
+
+function StatsPanel({staff,onUpdate}){
+  const withTotals=calcTotals(staff);
+  const upField=(si,section,idx,field,val)=>{
+    const next=JSON.parse(JSON.stringify(staff));
+    next[si][section][idx][field]=field==="n"?val:(parseFloat(val)||0);
+    onUpdate(next);
+  };
+  const addRow=(si,section)=>{
+    const next=JSON.parse(JSON.stringify(staff));
+    if(section==="courses") next[si].courses.push({n:"קורס חדש",ss:2});
+    else if(section==="ext") next[si].ext.push({n:"קורס חדש",dept:"",ss:2});
+    else if(section==="bonuses") next[si].bonuses.push({n:"גמול תפקיד",ss:1});
+    onUpdate(next);
+  };
+  const delRow=(si,section,idx)=>{
+    const next=JSON.parse(JSON.stringify(staff));
+    next[si][section].splice(idx,1);
+    onUpdate(next);
+  };
+  const upNote=(si,val)=>{
+    const next=JSON.parse(JSON.stringify(staff));
+    next[si].note=val;
+    onUpdate(next);
+  };
+  const upName=(si,val)=>{
+    const next=JSON.parse(JSON.stringify(staff));
+    next[si].name=val;
+    onUpdate(next);
+  };
+
+  const rowStyle={display:"flex",alignItems:"center",gap:4,borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2};
+  const niStyle=(clr)=>({width:52,padding:"2px 3px",borderRadius:4,border:"1px solid "+(clr||"#D1D5DB"),textAlign:"center",fontSize:11,background:"#F9FAFB",flexShrink:0});
+  const delBtn=(cb)=>h("button",{onClick:cb,style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:12,padding:"0 2px",flexShrink:0}},"✕");
+  const addBtn=(label,cb)=>h("button",{onClick:cb,style:{background:"none",border:"1px dashed #D1D5DB",color:"#9CA3AF",cursor:"pointer",fontSize:10,padding:"2px 8px",borderRadius:4,marginTop:3,width:"100%"}},label);
+
   return h("div",{style:{padding:18}},
-    h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764",marginBottom:3}},"שעות סגל תשפ\"ז"),
-    h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:4}},"לחצי על שדה לעריכה — הסכום מחושב אוטומטי"),
-    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}},
-      Object.entries(sd).map(([nm,d])=>{
-        const l=CL[nm]||{c:"#374151",bg:"#F3F4F6"};
-        return h("div",{key:nm,style:{background:"#fff",borderRadius:12,padding:13,borderRight:"4px solid "+l.c,border:"1px solid "+l.c+"20",borderRightWidth:4}},
-          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}},
-            h("span",{style:{fontWeight:700,fontSize:14,color:l.c}},nm),
-            d.note&&h("span",{style:{fontSize:9,color:"#B45309",background:"#FFF7ED",borderRadius:99,padding:"1px 6px"}},d.note)),
+    h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764",marginBottom:3}},"שעות סגל"),
+    h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:4}},"עריכה ידנית - השינויים נשמרים אוטומטית לכולם"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}},
+      withTotals.map((d,si)=>{
+        const l=CL[d.name]||{c:"#374151",bg:"#F3F4F6"};
+        return h("div",{key:si,style:{background:"#fff",borderRadius:12,padding:13,borderRight:"4px solid "+l.c,border:"1px solid "+l.c+"20",borderRightWidth:4}},
+          // Header: name + note
+          h("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:9}},
+            h("input",{value:d.name,onChange:e=>upName(si,e.target.value),style:{fontWeight:700,fontSize:13,color:l.c,border:"none",background:"transparent",flex:1,outline:"none"}}),
+            h("input",{value:d.note||"",onChange:e=>upNote(si,e.target.value),placeholder:"תווית (שבתון...)",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:80,outline:"none"}})),
+          // Totals
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}},
-            [["ש״ס",d.ss],["ש״ש",d.sha]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"8px",textAlign:"center"}},
-              h("div",{style:{fontSize:17,fontWeight:800,color:l.c}},typeof v==="number"?v.toFixed(2):v),
+            [["שס",d.totalSS],["שש",d.totalSHA]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},
+              h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},typeof v==="number"?v.toFixed(2):v),
               h("div",{style:{fontSize:9,color:l.c,opacity:.7}},lb)))),
-          h("div",{style:{fontSize:10}},
-            d.courses.filter(c=>!c.ext).map((c,ci)=>
-              h("div",{key:ci,style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2,gap:4}},
-                h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,color:"#374151"}},c.n),
-                h("div",{style:{display:"flex",gap:3,alignItems:"center",flexShrink:0}},
-                  h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upC(nm,ci,e.target.value),style:{width:48,padding:"2px 3px",borderRadius:4,border:"1px solid "+l.c,textAlign:"center",fontSize:10,background:"#F9FAFB",color:l.c}}),
-                  h("span",{style:{fontSize:8,color:"#9CA3AF"}},"ש״ס")))),
-            (d.ext||[]).length>0&&[
-              h("div",{key:"exth",style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginTop:5,marginBottom:2}},"קורסים חיצוניים"),
-              ...(d.ext||[]).map((c,i)=>h("div",{key:"ext"+i,style:{display:"flex",justifyContent:"space-between",fontSize:9,color:"#9CA3AF",marginBottom:1}},h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"75%"}},c.n+(c.dept?" ("+c.dept+")":"")),h("span",{},c.ss+"ש״ס")))
-            ],
-            (d.bonuses||[]).length>0&&h("div",{style:{marginTop:6,background:"#FFF7ED",borderRadius:6,padding:"5px 8px",border:"1px solid #FED7AA"}},
-              h("div",{style:{fontWeight:600,fontSize:9,color:"#92400E",marginBottom:3}},"גמולי תפקיד"),
-              (d.bonuses||[]).map((b,bi)=>
-                h("div",{key:bi,style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}},
-                  h("span",{style:{fontSize:9,color:"#92400E",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"🏷 "+b.n),
-                  h("div",{style:{display:"flex",gap:3,alignItems:"center",flexShrink:0}},
-                    h("input",{type:"number",step:".5",min:"0",value:b.ss,onChange:e=>upB(nm,bi,e.target.value),style:{width:44,padding:"2px 3px",borderRadius:4,border:"1px solid #F59E0B",textAlign:"center",fontSize:10,background:"#FEF9C3",color:"#92400E"}}),
-                    h("span",{style:{fontSize:8,color:"#9CA3AF"}},"ש״ס"))))))
+          // Courses
+          h("div",{style:{fontSize:10,marginBottom:6}},
+            h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסי מחלקה"),
+            d.courses.map((c,ci)=>h("div",{key:ci,style:rowStyle},
+              h("input",{value:c.n,onChange:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
+              h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"courses",ci,"ss",e.target.value),style:niStyle(l.c)}),
+              h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
+              delBtn(()=>delRow(si,"courses",ci)))),
+            addBtn("+ קורס פנימי",()=>addRow(si,"courses"))),
+          // External
+          h("div",{style:{fontSize:10,marginBottom:6}},
+            h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסים חיצוניים"),
+            d.ext.map((c,ei)=>h("div",{key:ei,style:rowStyle},
+              h("input",{value:c.n,onChange:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
+              h("input",{value:c.dept||"",onChange:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:50,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"1px 3px",flexShrink:0}}),
+              h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"ext",ei,"ss",e.target.value),style:niStyle("#9CA3AF")}),
+              h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
+              delBtn(()=>delRow(si,"ext",ei)))),
+            addBtn("+ קורס חיצוני",()=>addRow(si,"ext"))),
+          // Bonuses
+          h("div",{style:{background:"#FFF7ED",borderRadius:6,padding:"6px 8px",border:"1px solid #FED7AA"}},
+            h("div",{style:{fontWeight:600,fontSize:9,color:"#92400E",marginBottom:3}},"גמולי תפקיד"),
+            d.bonuses.map((b,bi)=>h("div",{key:bi,style:rowStyle},
+              h("input",{value:b.n,onChange:e=>upField(si,"bonuses",bi,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",color:"#92400E",minWidth:0}}),
+              h("input",{type:"number",step:".5",min:"0",value:b.ss,onChange:e=>upField(si,"bonuses",bi,"ss",e.target.value),style:niStyle("#F59E0B")}),
+              h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
+              delBtn(()=>delRow(si,"bonuses",bi)))),
+            addBtn("+ גמול תפקיד",()=>addRow(si,"bonuses")))
         );
       })));
 }
 
 function ConflictsPanel({cfls}){
-  if(!cfls.length)return h("div",{style:{padding:18}},h("div",{style:{background:"#F0FDF4",border:"1.5px solid #86EFAC",borderRadius:12,padding:16}},h("div",{style:{fontWeight:700,color:"#166534",fontSize:13}},"אין חפיפות — המערכת תקינה")));
-  return h("div",{style:{padding:18}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:14,marginBottom:12}},"חפיפות ("+cfls.length+")"),cfls.map((cf,i)=>{const l=lc(cf.lec);return h("div",{key:i,style:{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:11,padding:12,marginBottom:9}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:12,marginBottom:6}},"חפיפה — "+cf.lec+" · "+cf.day),h("div",{style:{display:"flex",flexWrap:"wrap",gap:5}},cf.slots.map((sl,j)=>{const tl=YTABS.find(t=>t.id===sl.yid);return h("span",{key:j,style:{background:"#fff",border:"1px solid #FCA5A5",borderRadius:999,padding:"2px 8px",fontSize:10,color:"#7F1D1D"}},(tl?tl.lbl:sl.yid)+": "+sl.course);})));})
+  if(!cfls.length)return h("div",{style:{padding:18}},h("div",{style:{background:"#F0FDF4",border:"1.5px solid #86EFAC",borderRadius:12,padding:16}},h("div",{style:{fontWeight:700,color:"#166534",fontSize:13}},"אין חפיפות - המערכת תקינה")));
+  return h("div",{style:{padding:18}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:14,marginBottom:12}},"חפיפות ("+cfls.length+")"),cfls.map((cf,i)=>{return h("div",{key:i,style:{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:11,padding:12,marginBottom:9}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:12,marginBottom:6}},"חפיפה - "+cf.lec+" - "+cf.day),h("div",{style:{display:"flex",flexWrap:"wrap",gap:5}},cf.slots.map((sl,j)=>{const tl=YTABS.find(t=>t.id===sl.yid);return h("span",{key:j,style:{background:"#fff",border:"1px solid #FCA5A5",borderRadius:999,padding:"2px 8px",fontSize:10,color:"#7F1D1D"}},(tl?tl.lbl:sl.yid)+": "+sl.course);})));})
   );
 }
 
@@ -267,53 +321,93 @@ function Login({onLogin}){
 }
 
 function App(){
-  const fresh=()=>JSON.parse(JSON.stringify(SCHED));
+  const freshSched=()=>JSON.parse(JSON.stringify(SCHED_DEFAULT));
+  const freshStaff=()=>JSON.parse(JSON.stringify(STAFF_DEFAULT));
+  const freshBanners=()=>JSON.parse(JSON.stringify(DEFAULT_BANNERS));
+
   const[user,sUser]=useState(null);
-  const[data,sData]=useState(fresh);
+  const[sched,setSched]=useState(freshSched);
+  const[staff,setStaff]=useState(freshStaff);
+  const[banners,setBanners]=useState(freshBanners);
   const[dbSt,setDbSt]=useState("loading");
   const[ay,sAy]=useState("y1a");
   const[view,sView]=useState("schedule");
   const[acY,sAcY]=useState(AYS[0]);
   const[modal,sModal]=useState(null);
+  const[bannerModal,setBannerModal]=useState(null);
   const[saving,setSaving]=useState(false);
   const[pdfOpen,setPdf]=useState(false);
   const saveTimer=useRef(null);
+  const staffTimer=useRef(null);
 
+  // Load schedule + staff + banners from DB on year change
   useEffect(()=>{
     setDbSt("loading");
-    dbLoad(acY).then(d=>{
-      if(d){sData(d);}else{sData(fresh());dbSave(fresh(),acY);}
+    const schedId="sched_"+acY;
+    const staffId="staff_"+acY;
+    const bannerId="banners_"+acY;
+    Promise.all([dbLoad(schedId),dbLoad(staffId),dbLoad(bannerId)]).then(([s,st,bn])=>{
+      setSched(s||freshSched());
+      setStaff(st||freshStaff());
+      setBanners(bn||freshBanners());
       setDbSt("ok");
-    }).catch(()=>{sData(fresh());setDbSt("error");});
+    }).catch(()=>setDbSt("error"));
   },[acY]);
 
+  // Realtime for schedule
   useEffect(()=>{
-    const ch=dbSubscribe(nd=>sData(nd),acY);
+    const ch=dbSub("sched_"+acY,nd=>setSched(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
-  const saveDB=useCallback((nd,yr)=>{
-    clearTimeout(saveTimer.current);
-    setSaving(true);
-    saveTimer.current=setTimeout(async()=>{
-      const ok=await dbSave(nd,yr);
-      setSaving(false);setDbSt(ok?"ok":"error");
-    },800);
-  },[]);
+  // Realtime for staff
+  useEffect(()=>{
+    const ch=dbSub("staff_"+acY,nd=>setStaff(nd));
+    return()=>sb.removeChannel(ch);
+  },[acY]);
 
-  const cfls=useMemo(()=>getConflicts(data),[data]);
+  // Realtime for banners
+  useEffect(()=>{
+    const ch=dbSub("banners_"+acY,nd=>setBanners(nd));
+    return()=>sb.removeChannel(ch);
+  },[acY]);
+
+  const saveSchedDB=useCallback((nd)=>{
+    clearTimeout(saveTimer.current);setSaving(true);
+    saveTimer.current=setTimeout(async()=>{const ok=await dbSave("sched_"+acY,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+  },[acY]);
+
+  const saveStaffDB=useCallback((nd)=>{
+    clearTimeout(staffTimer.current);setSaving(true);
+    staffTimer.current=setTimeout(async()=>{const ok=await dbSave("staff_"+acY,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+  },[acY]);
+
+  const saveBannersDB=useCallback((nd)=>{
+    dbSave("banners_"+acY,nd);
+  },[acY]);
+
+  const cfls=useMemo(()=>getConflicts(sched),[sched]);
   const cSet=useMemo(()=>{const s=new Set();cfls.forEach(c=>c.slots.forEach(sl=>s.add(c.sem+"|"+c.lec+"|"+c.day+"|"+sl.startH)));return s;},[cfls]);
   const cYids=useMemo(()=>{const s=new Set();cfls.forEach(c=>c.slots.forEach(sl=>s.add(sl.yid)));return s;},[cfls]);
 
   const handleSave=useCallback((day,form)=>{
-    sData(prev=>{const yd=Object.assign({},prev[ay]);const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next=Object.assign({},prev,{[ay]:yd});saveDB(next,acY);return next;});
+    setSched(prev=>{const yd=Object.assign({},prev[ay]);const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});
     sModal(null);
-  },[ay,modal,acY,saveDB]);
+  },[ay,modal,saveSchedDB]);
 
   const handleDelete=useCallback((day,cell)=>{
-    sData(prev=>{const yd=Object.assign({},prev[ay]);yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next=Object.assign({},prev,{[ay]:yd});saveDB(next,acY);return next;});
+    setSched(prev=>{const yd=Object.assign({},prev[ay]);yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});
     sModal(null);
-  },[ay,acY,saveDB]);
+  },[ay,acY,saveSchedDB]);
+
+  const handleStaffUpdate=useCallback((next)=>{
+    setStaff(next);saveStaffDB(next);
+  },[saveStaffDB]);
+
+  const handleBannerSave=useCallback((yid,txt)=>{
+    setBanners(prev=>{const next=Object.assign({},prev,{[yid]:txt});saveBannersDB(next);return next;});
+    setBannerModal(null);
+  },[saveBannersDB]);
 
   if(!user)return h(Login,{onLogin:sUser});
 
@@ -321,14 +415,14 @@ function App(){
   const msc=YTABS.filter(t=>t.deg==="תואר שני");
   const curTab=YTABS.find(t=>t.id===ay);
   const pdfItems=[
-    {label:"שנתון נוכחי — "+(curTab?curTab.lbl:""),fn:()=>exportPDF(ay,data,curTab?curTab.lbl:"",acY)},
-    {label:"── תואר ראשון ──",fn:null},
-    ...bsc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,data,t.lbl,acY)})),
-    {label:"── תואר שני ──",fn:null},
-    ...msc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,data,t.lbl,acY)}))
+    {label:"שנתון נוכחי - "+(curTab?curTab.lbl:""),fn:()=>exportPDF(ay,sched,banners,curTab?curTab.lbl:"",acY)},
+    {label:"תואר ראשון",fn:null},
+    ...bsc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,t.lbl,acY)})),
+    {label:"תואר שני",fn:null},
+    ...msc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,t.lbl,acY)}))
   ];
 
-  const dot=h("span",{style:{width:8,height:8,borderRadius:"50%",display:"inline-block",background:saving?"#FCD34D":dbSt==="ok"?"#34D399":"#F87171",marginLeft:4}});
+  const syncDot=h("span",{style:{width:8,height:8,borderRadius:"50%",display:"inline-block",marginLeft:4,background:saving?"#FCD34D":dbSt==="ok"?"#34D399":"#F87171"}});
 
   return h("div",{style:{minHeight:"100vh",background:"#F0EDFF"}},
     h("div",{style:{background:"linear-gradient(120deg,#2d0a5c,#4C1D95,#5B21B6)",padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",height:50}},
@@ -337,43 +431,44 @@ function App(){
         h("div",null,
           h("div",{style:{display:"flex",alignItems:"center",gap:8}},
             h("span",{style:{color:"#fff",fontWeight:700,fontSize:14}},"מערכת ניהול שעות"),
-            h("select",{value:acY,onChange:e=>{sAcY(e.target.value);sData(fresh());},style:{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:99,color:"#E9D5FF",fontSize:11,fontWeight:600,padding:"2px 8px",outline:"none"}},
+            h("select",{value:acY,onChange:e=>{sAcY(e.target.value);setSched(freshSched());setStaff(freshStaff());setBanners(freshBanners());},style:{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:99,color:"#E9D5FF",fontSize:11,fontWeight:600,padding:"2px 8px",outline:"none"}},
               AYS.map(y=>h("option",{key:y,value:y,style:{background:"#3B0764",color:"#fff"}},y)))),
-          h("div",{style:{color:"rgba(255,255,255,0.45)",fontSize:10}},"המחלקה למדעי התזונה · אוניברסיטת אריאל"))),
+          h("div",{style:{color:"rgba(255,255,255,0.45)",fontSize:10}},"המחלקה למדעי התזונה - אוניברסיטת אריאל"))),
       h("div",{style:{display:"flex",alignItems:"center",gap:8}},
-        h("div",{style:{display:"flex",alignItems:"center",fontSize:10,color:"rgba(255,255,255,0.6)"}},dot,saving?"שומר...":dbSt==="ok"?"מסונכרן":"שגיאה"),
+        h("div",{style:{display:"flex",alignItems:"center",fontSize:10,color:"rgba(255,255,255,0.6)"}},syncDot,saving?"שומר...":dbSt==="ok"?"מסונכרן":"שגיאה"),
         cfls.length>0&&h("button",{onClick:()=>sView("conflicts"),style:{background:"#EF4444",border:"none",borderRadius:99,padding:"3px 9px",color:"#fff",fontSize:11,fontWeight:700}},"⚠ "+cfls.length),
         h("span",{style:{color:"rgba(255,255,255,0.5)",fontSize:10}},user.split("@")[0]),
         h("button",{onClick:()=>sUser(null),style:{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:7,padding:"3px 9px",fontSize:11}},"יציאה"))),
     h("div",{style:{background:"#fff",borderBottom:"1.5px solid #EDE9FE",overflowX:"auto"}},
       h("div",{style:{display:"flex",alignItems:"stretch",padding:"0 10px",minWidth:"max-content"}},
         h("span",{style:{alignSelf:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,padding:"0 8px 0 2px",whiteSpace:"nowrap"}},"תואר ראשון"),
-        bsc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",position:"relative",color:active?"#5B21B6":t.fut?"#9CA3AF":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,t.fut&&h("span",{style:{position:"absolute",top:4,right:-1,fontSize:7,background:"#FED7AA",color:"#92400E",borderRadius:99,padding:"0 3px",fontWeight:700}},"ח"),cYids.has(t.id)?" ⚠":"");}),
+        bsc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",position:"relative",color:active?"#5B21B6":t.fut?"#9CA3AF":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,t.fut&&h("span",{style:{position:"absolute",top:4,right:-1,fontSize:7,background:"#FED7AA",color:"#92400E",borderRadius:99,padding:"0 3px"}},"ח"),cYids.has(t.id)?" ⚠":"");}),
         h("div",{style:{width:1,background:"#EDE9FE",margin:"7px 8px"}}),
         h("span",{style:{alignSelf:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,padding:"0 2px",whiteSpace:"nowrap"}},"תואר שני"),
         msc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",color:active?"#5B21B6":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,cYids.has(t.id)?" ⚠":"");}))),
     h("div",{style:{padding:"12px 12px 24px"}},
       h("div",{style:{display:"flex",gap:7,marginBottom:11,alignItems:"center",flexWrap:"wrap"}},
-        [{id:"schedule",l:"📋 מערכת שעות"},{id:"stats",l:"📊 ש\"ס / ש\"ש"},{id:"conflicts",l:"⚠ חפיפות ("+cfls.length+")"}].map(t=>
+        [{id:"schedule",l:"📋 מערכת שעות"},{id:"stats",l:"📊 שס / שש"},{id:"conflicts",l:"⚠ חפיפות ("+cfls.length+")"}].map(t=>
           h("button",{key:t.id,onClick:()=>sView(t.id),style:{padding:"6px 12px",borderRadius:8,border:view===t.id?"none":"1px solid #DDD6FE",background:view===t.id?"linear-gradient(135deg,#7C3AED,#4C1D95)":"#fff",color:view===t.id?"#fff":"#5B21B6",fontSize:12,fontWeight:600,cursor:"pointer"}},t.l)),
         h("div",{style:{flex:1}}),
         h("div",{style:{position:"relative"}},
           h("button",{onClick:()=>setPdf(!pdfOpen),style:{padding:"5px 12px",borderRadius:8,border:"1px solid #DDD6FE",background:"#fff",color:"#5B21B6",fontSize:11,fontWeight:600}},"🖨️ PDF ▾"),
-          pdfOpen&&h("div",{style:{position:"absolute",top:"110%",left:0,background:"#fff",border:"1px solid #DDD6FE",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:100,minWidth:260,overflow:"hidden",direction:"rtl"}},
+          pdfOpen&&h("div",{style:{position:"absolute",top:"110%",left:0,background:"#fff",border:"1px solid #DDD6FE",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:100,minWidth:250,overflow:"hidden",direction:"rtl"}},
             pdfItems.map((item,i)=>item.fn
               ?h("button",{key:i,onClick:()=>{item.fn();setPdf(false);},style:{width:"100%",padding:"9px 14px",border:"none",background:"none",textAlign:"right",fontSize:11,color:"#374151",cursor:"pointer",borderBottom:"1px solid #F3F4F6",fontFamily:"inherit"},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="none"},item.label)
               :h("div",{key:i,style:{padding:"5px 14px",fontSize:10,color:"#9CA3AF",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",fontWeight:600}},item.label)))),
-        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?"))dbSave(fresh(),acY).then(()=>sData(fresh()));},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
+        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?"))dbSave("sched_"+acY,freshSched()).then(()=>{setSched(freshSched());dbSave("banners_"+acY,freshBanners()).then(()=>setBanners(freshBanners()));});},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
       view==="schedule"&&h("div",{style:{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:10,border:"0.5px solid #EDE9FE",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}},
         h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),
         Object.entries(CL).map(([n,l])=>h("span",{key:n,style:{background:l.bg,color:l.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+l.c+"25"}},n)),
-        h("span",{style:{fontSize:10,color:"#0369A1",background:"#DBEFFE",borderRadius:99,padding:"2px 8px",marginRight:6}},"|  כחול = יום ZOOM")),
+        h("span",{style:{fontSize:10,color:"#0369A1",background:"#DBEFFE",borderRadius:99,padding:"2px 8px",marginRight:6}},"|  כחול = ZOOM")),
       h("div",{style:{background:"#fff",borderRadius:13,border:"0.5px solid #EDE9FE",overflow:"hidden"}},
-        view==="schedule"&&h(Grid,{yid:ay,data:data,cSet:cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c})}),
-        view==="stats"&&h(StatsPanel,null),
+        view==="schedule"&&h(Grid,{yid:ay,data:sched,banners:banners,cSet:cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c}),onBannerEdit:(yid,cur)=>setBannerModal({yid,cur})}),
+        view==="stats"&&h(StatsPanel,{staff:staff,onUpdate:handleStaffUpdate}),
         view==="conflicts"&&h(ConflictsPanel,{cfls:cfls}))),
     pdfOpen&&h("div",{style:{position:"fixed",inset:0,zIndex:99},onClick:()=>setPdf(false)}),
-    modal&&h(EditModal,{day:modal.day,startH:modal.startH,cell:modal.cell,yid:ay,onSave:handleSave,onDelete:handleDelete,onClose:()=>sModal(null)}));
+    modal&&h(EditModal,{day:modal.day,startH:modal.startH,cell:modal.cell,yid:ay,onSave:handleSave,onDelete:handleDelete,onClose:()=>sModal(null)}),
+    bannerModal&&h(BannerModal,{yid:bannerModal.yid,current:bannerModal.cur,onSave:handleBannerSave,onClose:()=>setBannerModal(null)}));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App,null));
