@@ -86,25 +86,28 @@ const SCHED={
 // ══════════════════════════════════════════
 // Supabase sync functions
 // ══════════════════════════════════════════
-async function loadFromDB(){
+async function loadFromDB(year){
+  const rowId = "schedule_" + year;
   try{
-    const{data,error}=await supabaseClient.from("schedule_data").select("data").eq("id","main").single();
+    const{data,error}=await supabaseClient.from("schedule_data").select("data").eq("id",rowId).single();
     if(error||!data||!data.data||Object.keys(data.data).length===0)return null;
     return data.data;
   }catch(e){return null;}
 }
 
-async function saveToDB(schedData){
+async function saveToDB(schedData, year){
+  const rowId = "schedule_" + year;
   try{
-    const{error}=await supabaseClient.from("schedule_data").upsert({id:"main",data:schedData,updated_at:new Date().toISOString()});
+    const{error}=await supabaseClient.from("schedule_data").upsert({id:rowId,data:schedData,updated_at:new Date().toISOString()});
     return !error;
   }catch(e){return false;}
 }
 
-function subscribeToChanges(callback){
-  return supabaseClient.channel("schedule_changes")
+function subscribeToChanges(callback, year){
+  const rowId = "schedule_" + year;
+  return supabaseClient.channel("schedule_changes_" + year)
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"schedule_data"},payload=>{
-      if(payload.new&&payload.new.data) callback(payload.new.data);
+      if(payload.new&&payload.new.id===rowId&&payload.new.data) callback(payload.new.data);
     })
     .subscribe();
 }
@@ -182,18 +185,82 @@ function EditModal({day,startH,cell,yid,onSave,onDelete,onClose}){
 }
 
 function StatsPanel(){
+  const [staffData, setStaffData] = useState(()=>{
+    // Load staff data from localStorage per-session (editable)
+    try{const saved=localStorage.getItem("staff_data_v1");if(saved)return JSON.parse(saved);}catch(e){}
+    return STAFF;
+  });
+
+  const updateCourse=(name,idx,field,val)=>{
+    setStaffData(prev=>{
+      const next={...prev};
+      next[name]={...next[name]};
+      next[name].courses=[...next[name].courses];
+      next[name].courses[idx]={...next[name].courses[idx],[field]:parseFloat(val)||0};
+      // recalc total
+      const totalSS=next[name].courses.reduce((a,c)=>a+c.ss,0)+(next[name].bonuses||[]).reduce((a,b)=>a+b.ss,0);
+      const totalSHA=next[name].courses.reduce((a,c)=>a+c.sha,0)+(next[name].bonuses||[]).reduce((a,b)=>a+b.sha,0);
+      next[name].ss=+totalSS.toFixed(3);
+      next[name].sha=+totalSHA.toFixed(3);
+      localStorage.setItem("staff_data_v1",JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const updateBonus=(name,idx,field,val)=>{
+    setStaffData(prev=>{
+      const next={...prev};
+      next[name]={...next[name]};
+      next[name].bonuses=[...next[name].bonuses];
+      next[name].bonuses[idx]={...next[name].bonuses[idx],[field]:parseFloat(val)||0};
+      const totalSS=next[name].courses.reduce((a,c)=>a+c.ss,0)+next[name].bonuses.reduce((a,b)=>a+b.ss,0);
+      const totalSHA=next[name].courses.reduce((a,c)=>a+c.sha,0)+next[name].bonuses.reduce((a,b)=>a+b.sha,0);
+      next[name].ss=+totalSS.toFixed(3);
+      next[name].sha=+totalSHA.toFixed(3);
+      localStorage.setItem("staff_data_v1",JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const inp={width:52,padding:"2px 4px",borderRadius:4,border:"1px solid #D1D5DB",textAlign:"center",fontSize:10,background:"#F9FAFB"};
+
   return h("div",{style:{padding:18}},
     h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764",marginBottom:3}},'📊 ש"ס וש"ש — לפי אקסל שעות סגל תשפ"ז'),
-    h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:16}},"כולל קורסים חיצוניים · כולל גמולי תפקיד"),
-    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}},
-      Object.entries(STAFF).map(([name,d])=>{
+    h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:4}},"כולל קורסים חיצוניים · כולל גמולי תפקיד · ניתן לעריכה ידנית"),
+    h("div",{style:{fontSize:10,color:"#6B7280",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:7,padding:"6px 10px",marginBottom:16}},"💡 לחצי על ש"ס / ש"ש כדי לערוך — הסכום מחושב אוטומטי"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}},
+      Object.entries(staffData).map(([name,d])=>{
         const l=CL[name]||{c:"#374151",bg:"#F3F4F6"};
         return h("div",{key:name,style:{background:"#fff",borderRadius:12,padding:13,borderRight:`4px solid ${l.c}`,border:`1px solid ${l.c}20`,borderRightWidth:4}},
-          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}},h("span",{style:{fontWeight:700,fontSize:14,color:l.c}},name),d.note&&h("span",{style:{fontSize:9,color:"#B45309",background:"#FFF7ED",borderRadius:99,padding:"1px 6px"}},d.note)),
-          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}},[["ש\"ס",d.ss.toFixed(2)],["ש\"ש",d.sha.toFixed(2)]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"8px",textAlign:"center"}},h("div",{style:{fontSize:18,fontWeight:800,color:l.c}},v),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},lb)))),
-          h("div",{style:{fontSize:10,color:"#6B7280",lineHeight:1.7}},d.courses.map((c,i)=>h("div",{key:i,style:{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #F3F4F6",paddingBottom:1,marginBottom:1}},h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"80%"}},c.n+(c.note?` (${c.note})`:"")),h("span",{style:{color:l.c,fontWeight:600,whiteSpace:"nowrap"}},c.ss+"ש\"ס")))),
-          (d.ext||[]).length>0&&h("div",{style:{marginTop:6,paddingTop:5,borderTop:"1px dashed #E5E7EB"}},h("div",{style:{fontSize:9,fontWeight:600,color:"#9CA3AF",marginBottom:3}},`+ חיצוני: ${(d.ext||[]).reduce((a,c)=>a+c.ss,0).toFixed(1)}ש"ס`),(d.ext||[]).map((c,i)=>h("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:9.5,color:"#9CA3AF"}},h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"78%"}},`${c.n}${c.dept?` (${c.dept})`:""}`),h("span",{style:{fontWeight:600}},c.ss+"ש\"ס")))),
-          d.bonuses.length>0&&h("div",{style:{marginTop:7,background:"#FFF7ED",borderRadius:6,padding:"5px 8px",border:"1px solid #FED7AA"}},d.bonuses.map((b,i)=>h("div",{key:i,style:{fontSize:9.5,color:"#92400E",fontWeight:600}},`🏷 ${b.n}: +${b.ss}ש"ס / +${b.sha}ש"ש`)))
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}},
+            h("span",{style:{fontWeight:700,fontSize:14,color:l.c}},name),
+            d.note&&h("span",{style:{fontSize:9,color:"#B45309",background:"#FFF7ED",borderRadius:99,padding:"1px 6px"}},d.note)),
+          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}},
+            [["ש"ס",d.ss],["ש"ש",d.sha]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"8px",textAlign:"center"}},
+              h("div",{style:{fontSize:17,fontWeight:800,color:l.c}},typeof v==="number"?v.toFixed(2):v),
+              h("div",{style:{fontSize:9,color:l.c,opacity:.7}},lb)))),
+          h("div",{style:{fontSize:10,color:"#6B7280"}},
+            h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3,borderBottom:"1px solid #F3F4F6",paddingBottom:2}},"קורסים"),
+            d.courses.filter(c=>!c.ext).map((c,i)=>
+              h("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2,gap:4}},
+                h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,fontSize:10}},c.n+(c.note?` (${c.note})`:"")),
+                h("div",{style:{display:"flex",gap:2,alignItems:"center",flexShrink:0}},
+                  h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>updateCourse(name,d.courses.indexOf(c),"ss",e.target.value),style:{...inp,borderColor:l.c,color:l.c}}),
+                  h("span",{style:{fontSize:8,color:"#9CA3AF"}},"ש"ס")))),
+            (d.ext||[]).length>0&&h("div",{style:{marginTop:4}},
+              h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:2}},"+ חיצוני"),
+              (d.ext||[]).map((c,i)=>
+                h("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:9,color:"#9CA3AF",marginBottom:1}},
+                  h("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"75%"}},`${c.n}${c.dept?` (${c.dept})`:""}`),
+                  h("span",{},c.ss+"ש"ס")))),
+            (d.bonuses||[]).length>0&&h("div",{style:{marginTop:6,background:"#FFF7ED",borderRadius:6,padding:"5px 8px",border:"1px solid #FED7AA"}},
+              h("div",{style:{fontWeight:600,fontSize:9,color:"#92400E",marginBottom:3}},"גמולי תפקיד"),
+              (d.bonuses||[]).map((b,i)=>
+                h("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}},
+                  h("span",{style:{fontSize:9,color:"#92400E",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},`🏷 ${b.n}`),
+                  h("div",{style:{display:"flex",gap:2,alignItems:"center",flexShrink:0}},
+                    h("input",{type:"number",step:".5",min:"0",value:b.ss,onChange:e=>updateBonus(name,i,"ss",e.target.value),style:{...inp,width:44,borderColor:"#F59E0B",color:"#92400E"}}),
+                    h("span",{style:{fontSize:8,color:"#9CA3AF"}},"ש"ס")))))
         );
       })));
 }
@@ -232,26 +299,26 @@ function App(){
 
   // Load from DB on mount
   useEffect(()=>{
-    loadFromDB().then(dbData=>{
+    loadFromDB(acY).then(dbData=>{
       if(dbData){sData(dbData);setDbStatus("ok");}
-      else{setDbStatus("ok");saveToDB(fresh());}
+      else{setDbStatus("ok");saveToDB(fresh(),acY);}
     }).catch(()=>setDbStatus("error"));
-  },[]);
+  },[acY]);
 
   // Subscribe to realtime changes
   useEffect(()=>{
     const ch=subscribeToChanges(newData=>{
       sData(newData);
-    });
+    }, acY);
     return()=>supabaseClient.removeChannel(ch);
-  },[]);
+  },[acY]);
 
   // Auto-save to DB with debounce
-  const saveToDBDebounced=useCallback((newData)=>{
+  const saveToDBDebounced=useCallback((newData, year)=>{
     clearTimeout(saveTimer.current);
     setSaving(true);
     saveTimer.current=setTimeout(async()=>{
-      const ok=await saveToDB(newData);
+      const ok=await saveToDB(newData, year);
       setSaving(false);
       setDbStatus(ok?"ok":"error");
     },800);
@@ -262,11 +329,11 @@ function App(){
   const cYids=useMemo(()=>{const s=new Set();cfls.forEach(c=>c.slots.forEach(sl=>s.add(sl.yid)));return s;},[cfls]);
 
   const handleSave=useCallback((day,form)=>{
-    sData(prev=>{const yd={...prev[ay]};const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next={...prev,[ay]:yd};saveToDBDebounced(next);return next;});sModal(null);
+    sData(prev=>{const yd={...prev[ay]};const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next={...prev,[ay]:yd};saveToDBDebounced(next, acY);return next;});sModal(null);
   },[ay,modal,saveToDBDebounced]);
 
   const handleDelete=useCallback((day,cell)=>{
-    sData(prev=>{const yd={...prev[ay]};yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next={...prev,[ay]:yd};saveToDBDebounced(next);return next;});sModal(null);
+    sData(prev=>{const yd={...prev[ay]};yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next={...prev,[ay]:yd};saveToDBDebounced(next, acY);return next;});sModal(null);
   },[ay,saveToDBDebounced]);
 
   if(!user)return h(Login,{onLogin:sUser});
@@ -303,7 +370,7 @@ function App(){
           h("button",{onClick:()=>setPdf(!pdfOpen),style:{padding:"5px 12px",borderRadius:8,border:"1px solid #DDD6FE",background:"#fff",color:"#5B21B6",fontSize:11,fontWeight:600}},"🖨️ ייצוא PDF ▾"),
           pdfOpen&&h("div",{style:{position:"absolute",top:"110%",left:0,background:"#fff",border:"1px solid #DDD6FE",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:100,minWidth:260,overflow:"hidden",direction:"rtl"}},
             pdfItems.map((item,i)=>item.fn?h("button",{key:i,onClick:()=>{item.fn();setPdf(false);},style:{width:"100%",padding:"9px 14px",border:"none",background:"none",textAlign:"right",fontSize:11,color:"#374151",cursor:"pointer",borderBottom:"1px solid #F3F4F6",fontFamily:"inherit"},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="none"},item.label):h("div",{key:i,style:{padding:"5px 14px",fontSize:10,color:"#9CA3AF",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",fontWeight:600}},item.label)))),
-        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?"))saveToDB(fresh()).then(()=>sData(fresh()));},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
+        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?"))saveToDB(fresh(),acY).then(()=>sData(fresh()));},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
       view==="schedule"&&h("div",{style:{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:10,border:"0.5px solid #EDE9FE",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}},h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),Object.entries(CL).map(([n,l])=>h("span",{key:n,style:{background:l.bg,color:l.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:`1px solid ${l.c}25`}},n)),h("span",{style:{fontSize:10,color:"#0369A1",background:"#DBEFFE",borderRadius:99,padding:"2px 8px",marginRight:6}},"|  📹 כחול = יום זום מלא")),
       h("div",{style:{background:"#fff",borderRadius:13,border:"0.5px solid #EDE9FE",overflow:"hidden"}},
         view==="schedule"&&h(Grid,{yid:ay,data,cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c})}),
