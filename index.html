@@ -19,6 +19,7 @@ button,select,input,textarea{font-family:inherit;cursor:pointer}
 <script>
 const SUPA_URL = "https://getsysxmaypwafenceqm.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NzI3MjUsImV4cCI6MjA5MzI0ODcyNX0.ioVED3BP2CkdajgdeP9-kSUaJasXcvjSQd3VDcmqf-c";
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 async function dbLoad(id){
   try{
