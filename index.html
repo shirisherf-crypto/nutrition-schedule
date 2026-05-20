@@ -89,6 +89,7 @@ const YTABS=[
 ];
 const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו"];
 const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv"];
+function getYK(acY){const i=AYS.findIndex(y=>y===acY);return i>=0?AYS_KEYS[i]:"tshpz";}
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
 const mk=(c,l,ss,sha,nt,zm,s,e)=>({course:c,lec:l||"",ss:ss||0,sha:sha||0,notes:nt||"",zoom:!!zm,startH:s,endH:e});
 
@@ -257,6 +258,8 @@ function StatsPanel({staff,onUpdate}){
   return h("div",{style:{padding:18}},
     h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764",marginBottom:3}},"שעות סגל"),
     h("div",{style:{fontSize:11,color:"#9CA3AF",marginBottom:4}},"עריכה ידנית - השינויים נשמרים אוטומטית לכולם"),
+    h("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:10}},
+      h("button",{onClick:()=>{const next=JSON.parse(JSON.stringify(staff));next.push({name:"מרצה חדש",note:"",courses:[{n:"קורס 1",ss:2}],ext:[],bonuses:[]});onUpdate(next);},style:{padding:"6px 14px",borderRadius:8,border:"1px solid #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ הוסף מרצה")),
     h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}},
       withTotals.map((d,si)=>{
         const l=CL[d.name]||{c:"#374151",bg:"#F3F4F6"};
@@ -264,7 +267,8 @@ function StatsPanel({staff,onUpdate}){
           // Header: name + note
           h("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:9}},
             h("input",{type:"text",defaultValue:d.name,onBlur:e=>upName(si,e.target.value),style:{fontWeight:700,fontSize:13,color:l.c,border:"none",background:"transparent",flex:1,outline:"none"}}),
-            h("input",{type:"text",defaultValue:d.note||"",onBlur:e=>upNote(si,e.target.value),placeholder:"תווית (שבתון...)",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:80,outline:"none"}})),
+            h("input",{type:"text",defaultValue:d.note||"",onBlur:e=>upNote(si,e.target.value),placeholder:"תווית (שבתון...)",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:80,outline:"none"}}),
+            h("button",{onClick:()=>{if(window.confirm("למחוק את "+d.name+"?")){const next=JSON.parse(JSON.stringify(staff));next.splice(si,1);onUpdate(next);}},style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:14,padding:"0 2px",flexShrink:0,lineHeight:1}},"×")),
           // Totals
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}},
             [["שס",d.totalSS],["שש",d.totalSHA]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},
@@ -326,7 +330,7 @@ function BackupModal({acY,sched,staff,banners,onRestore,onClose}){
   const[msg,setMsg]=useState("");
 
   const doExport=()=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    const yk=getYK(acY);
     const backup={year:acY,yearKey:yk,date:new Date().toISOString(),sched,staff,banners};
     const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
@@ -398,7 +402,7 @@ function App(){
   // Load schedule + staff + banners from DB on year change
   useEffect(()=>{
     setDbSt("loading");
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    const yk=getYK(acY);
     const schedId="sched_"+yk;
     const staffId="staff_"+yk;
     const bannerId="banners_"+yk;
@@ -412,34 +416,34 @@ function App(){
 
   // Realtime for schedule
   useEffect(()=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("sched_"+yk,nd=>setSched(nd));
+    const yk=getYK(acY);const ch=dbSub("sched_"+yk,nd=>setSched(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   // Realtime for staff
   useEffect(()=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("staff_"+yk,nd=>setStaff(nd));
+    const yk=getYK(acY);const ch=dbSub("staff_"+yk,nd=>setStaff(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   // Realtime for banners
   useEffect(()=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("banners_"+yk,nd=>setBanners(nd));
+    const yk=getYK(acY);const ch=dbSub("banners_"+yk,nd=>setBanners(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   const saveSchedDB=useCallback((nd)=>{
     clearTimeout(saveTimer.current);setSaving(true);
-    saveTimer.current=setTimeout(async()=>{const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ok=await dbSave("sched_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+    saveTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("sched_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
   },[acY]);
 
   const saveStaffDB=useCallback((nd)=>{
     clearTimeout(staffTimer.current);setSaving(true);
-    staffTimer.current=setTimeout(async()=>{const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ok=await dbSave("staff_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+    staffTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("staff_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
   },[acY]);
 
   const saveBannersDB=useCallback((nd)=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";dbSave("banners_"+yk,nd);
+    const yk=getYK(acY);dbSave("banners_"+yk,nd);
   },[acY]);
 
   const cfls=useMemo(()=>getConflicts(sched),[sched]);
@@ -466,7 +470,7 @@ function App(){
   },[saveBannersDB]);
 
   const handleRestore=useCallback((data)=>{
-    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    const yk=getYK(acY);
     if(data.sched){setSched(data.sched);dbSave("sched_"+yk,data.sched);}
     if(data.staff){setStaff(data.staff);dbSave("staff_"+yk,data.staff);}
     if(data.banners){setBanners(data.banners);dbSave("banners_"+yk,data.banners);}
@@ -522,7 +526,7 @@ function App(){
             pdfItems.map((item,i)=>item.fn
               ?h("button",{key:i,onClick:()=>{item.fn();setPdf(false);},style:{width:"100%",padding:"9px 14px",border:"none",background:"none",textAlign:"right",fontSize:11,color:"#374151",cursor:"pointer",borderBottom:"1px solid #F3F4F6",fontFamily:"inherit"},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="none"},item.label)
               :h("div",{key:i,style:{padding:"5px 14px",fontSize:10,color:"#9CA3AF",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",fontWeight:600}},item.label)))),
-        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?")){const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";dbSave("sched_"+yk,freshSched()).then(()=>{setSched(freshSched());dbSave("banners_"+yk,freshBanners()).then(()=>setBanners(freshBanners()));});}},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
+        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?")){const yk=getYK(acY);dbSave("sched_"+yk,freshSched()).then(()=>{setSched(freshSched());dbSave("banners_"+yk,freshBanners()).then(()=>setBanners(freshBanners()));});}},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
       view==="schedule"&&h("div",{style:{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:10,border:"0.5px solid #EDE9FE",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}},
         h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),
         Object.entries(CL).map(([n,l])=>h("span",{key:n,style:{background:l.bg,color:l.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+l.c+"25"}},n)),
