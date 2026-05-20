@@ -263,8 +263,8 @@ function StatsPanel({staff,onUpdate}){
         return h("div",{key:si,style:{background:"#fff",borderRadius:12,padding:13,borderRight:"4px solid "+l.c,border:"1px solid "+l.c+"20",borderRightWidth:4}},
           // Header: name + note
           h("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:9}},
-            h("input",{value:d.name,onChange:e=>upName(si,e.target.value),style:{fontWeight:700,fontSize:13,color:l.c,border:"none",background:"transparent",flex:1,outline:"none"}}),
-            h("input",{value:d.note||"",onChange:e=>upNote(si,e.target.value),placeholder:"תווית (שבתון...)",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:80,outline:"none"}})),
+            h("input",{type:"text",defaultValue:d.name,onBlur:e=>upName(si,e.target.value),style:{fontWeight:700,fontSize:13,color:l.c,border:"none",background:"transparent",flex:1,outline:"none"}}),
+            h("input",{type:"text",defaultValue:d.note||"",onBlur:e=>upNote(si,e.target.value),placeholder:"תווית (שבתון...)",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:80,outline:"none"}})),
           // Totals
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}},
             [["שס",d.totalSS],["שש",d.totalSHA]].map(([lb,v])=>h("div",{key:lb,style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},
@@ -274,7 +274,7 @@ function StatsPanel({staff,onUpdate}){
           h("div",{style:{fontSize:10,marginBottom:6}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסי מחלקה"),
             d.courses.map((c,ci)=>h("div",{key:ci,style:rowStyle},
-              h("input",{value:c.n,onChange:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
+              h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
               h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"courses",ci,"ss",e.target.value),style:niStyle(l.c)}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"courses",ci)))),
@@ -283,8 +283,8 @@ function StatsPanel({staff,onUpdate}){
           h("div",{style:{fontSize:10,marginBottom:6}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסים חיצוניים"),
             d.ext.map((c,ei)=>h("div",{key:ei,style:rowStyle},
-              h("input",{value:c.n,onChange:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-              h("input",{type:"text",value:c.dept||"",onChange:e=>{e.stopPropagation();upField(si,"ext",ei,"dept",e.target.value);},onFocus:e=>e.target.select(),placeholder:"חוג",style:{width:65,fontSize:9,border:"1px solid #93C5FD",borderRadius:4,padding:"3px 5px",flexShrink:0,outline:"none",background:"#EFF6FF",direction:"rtl"}}),
+              h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
+              h("input",{type:"text",defaultValue:c.dept||"",onBlur:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:65,fontSize:9,border:"1px solid #93C5FD",borderRadius:4,padding:"3px 5px",flexShrink:0,outline:"none",background:"#EFF6FF",direction:"rtl"}}),
               h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"ext",ei,"ss",e.target.value),style:niStyle("#9CA3AF")}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"ext",ei)))),
@@ -293,7 +293,7 @@ function StatsPanel({staff,onUpdate}){
           h("div",{style:{background:"#FFF7ED",borderRadius:6,padding:"6px 8px",border:"1px solid #FED7AA"}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#92400E",marginBottom:3}},"גמולי תפקיד"),
             d.bonuses.map((b,bi)=>h("div",{key:bi,style:rowStyle},
-              h("input",{value:b.n,onChange:e=>upField(si,"bonuses",bi,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",color:"#92400E",minWidth:0}}),
+              h("input",{type:"text",defaultValue:b.n,onBlur:e=>upField(si,"bonuses",bi,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",color:"#92400E",minWidth:0}}),
               h("input",{type:"number",step:".5",min:"0",value:b.ss,onChange:e=>upField(si,"bonuses",bi,"ss",e.target.value),style:niStyle("#F59E0B")}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"bonuses",bi)))),
@@ -321,6 +321,59 @@ function Login({onLogin}){
       h("div",{style:{color:"rgba(255,255,255,0.25)",fontSize:10,textAlign:"center",marginTop:12}},"גישה מורשית לסגל בלבד")));
 }
 
+function BackupModal({acY,sched,staff,banners,onRestore,onClose}){
+  const[mode,setMode]=useState("menu");
+  const[msg,setMsg]=useState("");
+
+  const doExport=()=>{
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    const backup={year:acY,yearKey:yk,date:new Date().toISOString(),sched,staff,banners};
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="backup_"+yk+"_"+new Date().toLocaleDateString("he-IL").replace(/\//g,"-")+".json";
+    a.click();URL.revokeObjectURL(url);
+    setMsg("הגיבוי הורד בהצלחה!");
+  };
+
+  const doImport=(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.sched||!data.staff)throw new Error("קובץ לא תקין");
+        onRestore(data);
+        setMsg("השחזור הצליח! הנתונים נטענו.");
+      }catch(err){setMsg("שגיאה: "+err.message);}
+    };
+    reader.readAsText(file);
+  };
+
+  return h("div",{style:{position:"relative",zIndex:50}},
+    h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
+    h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:24,width:380,maxWidth:"94vw",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        h("div",{style:{fontWeight:700,fontSize:15,color:"#3B0764"}},"גיבוי ושחזור"),
+        h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
+      h("div",{style:{fontSize:11,color:"#6B7280",marginBottom:16,background:"#F9FAFB",borderRadius:8,padding:"10px 12px",lineHeight:1.6}},
+        h("div",{style:{fontWeight:600,color:"#374151",marginBottom:4}},"איך עובד:"),
+        h("div",null,"1. לפני כל עדכון קובץ — לחצי גיבוי"),
+        h("div",null,"2. הקובץ יישמר במחשב שלך"),
+        h("div",null,"3. אם משהו השתבש — לחצי שחזור ובחרי את הקובץ")),
+      h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
+        h("button",{onClick:doExport,style:{padding:"14px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#059669,#065F46)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}},
+          h("div",{style:{fontSize:20,marginBottom:4}},"⬇️"),
+          h("div",null,"גיבוי"),
+          h("div",{style:{fontSize:10,opacity:.8}},"הורד קובץ JSON")),
+        h("label",{style:{padding:"14px",borderRadius:10,border:"2px dashed #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"center",display:"block"}},
+          h("div",{style:{fontSize:20,marginBottom:4}},"⬆️"),
+          h("div",null,"שחזור"),
+          h("div",{style:{fontSize:10,opacity:.8}},"בחר קובץ JSON"),
+          h("input",{type:"file",accept:".json",onChange:doImport,style:{display:"none"}}))),
+      msg&&h("div",{style:{padding:"10px 12px",borderRadius:8,background:msg.includes("שגיאה")?"#FEF2F2":"#F0FDF4",color:msg.includes("שגיאה")?"#991B1B":"#166534",fontSize:12,fontWeight:600,textAlign:"center"}},msg)));
+}
+
 function App(){
   const freshSched=()=>JSON.parse(JSON.stringify(SCHED_DEFAULT));
   const freshStaff=()=>JSON.parse(JSON.stringify(STAFF_DEFAULT));
@@ -338,6 +391,7 @@ function App(){
   const[bannerModal,setBannerModal]=useState(null);
   const[saving,setSaving]=useState(false);
   const[pdfOpen,setPdf]=useState(false);
+  const[backupOpen,setBackup]=useState(false);
   const saveTimer=useRef(null);
   const staffTimer=useRef(null);
 
@@ -411,6 +465,14 @@ function App(){
     setBannerModal(null);
   },[saveBannersDB]);
 
+  const handleRestore=useCallback((data)=>{
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    if(data.sched){setSched(data.sched);dbSave("sched_"+yk,data.sched);}
+    if(data.staff){setStaff(data.staff);dbSave("staff_"+yk,data.staff);}
+    if(data.banners){setBanners(data.banners);dbSave("banners_"+yk,data.banners);}
+    setBackup(false);
+  },[acY]);
+
   if(!user)return h(Login,{onLogin:sUser});
 
   const bsc=YTABS.filter(t=>t.deg==="תואר ראשון");
@@ -453,6 +515,7 @@ function App(){
         [{id:"schedule",l:"📋 מערכת שעות"},{id:"stats",l:"📊 שס / שש"},{id:"conflicts",l:"⚠ חפיפות ("+cfls.length+")"}].map(t=>
           h("button",{key:t.id,onClick:()=>sView(t.id),style:{padding:"6px 12px",borderRadius:8,border:view===t.id?"none":"1px solid #DDD6FE",background:view===t.id?"linear-gradient(135deg,#7C3AED,#4C1D95)":"#fff",color:view===t.id?"#fff":"#5B21B6",fontSize:12,fontWeight:600,cursor:"pointer"}},t.l)),
         h("div",{style:{flex:1}}),
+        h("button",{onClick:()=>setBackup(true),style:{padding:"5px 12px",borderRadius:8,border:"1px solid #D1FAE5",background:"#F0FDF4",color:"#059669",fontSize:11,fontWeight:600}},"💾 גיבוי"),
         h("div",{style:{position:"relative"}},
           h("button",{onClick:()=>setPdf(!pdfOpen),style:{padding:"5px 12px",borderRadius:8,border:"1px solid #DDD6FE",background:"#fff",color:"#5B21B6",fontSize:11,fontWeight:600}},"🖨️ PDF ▾"),
           pdfOpen&&h("div",{style:{position:"absolute",top:"110%",left:0,background:"#fff",border:"1px solid #DDD6FE",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:100,minWidth:250,overflow:"hidden",direction:"rtl"}},
@@ -469,6 +532,7 @@ function App(){
         view==="stats"&&h(StatsPanel,{staff:staff,onUpdate:handleStaffUpdate}),
         view==="conflicts"&&h(ConflictsPanel,{cfls:cfls}))),
     pdfOpen&&h("div",{style:{position:"fixed",inset:0,zIndex:99},onClick:()=>setPdf(false)}),
+    backupOpen&&h(BackupModal,{acY,sched,staff,banners,onRestore:handleRestore,onClose:()=>setBackup(false)}),
     modal&&h(EditModal,{day:modal.day,startH:modal.startH,cell:modal.cell,yid:ay,onSave:handleSave,onDelete:handleDelete,onClose:()=>sModal(null)}),
     bannerModal&&h(BannerModal,{yid:bannerModal.yid,current:bannerModal.cur,onSave:handleBannerSave,onClose:()=>setBannerModal(null)}));
 }
