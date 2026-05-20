@@ -283,7 +283,7 @@ function StatsPanel({staff,onUpdate}){
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסים חיצוניים"),
             d.ext.map((c,ei)=>h("div",{key:ei,style:rowStyle},
               h("input",{value:c.n,onChange:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-              h("input",{value:c.dept||"",onChange:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:50,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"1px 3px",flexShrink:0}}),
+              h("input",{value:c.dept||"",onChange:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:60,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 4px",flexShrink:0,outline:"none",background:"#fff"}}),
               h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"ext",ei,"ss",e.target.value),style:niStyle("#9CA3AF")}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"ext",ei)))),
