@@ -87,7 +87,8 @@ const YTABS=[
   {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"מ.א שנה ב סמ א",fut:false,zD:[]},
   {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"מ.א שנה ב סמ ב",fut:false,zD:[]},
 ];
-const AYS=["\u05ea\u05e9\u05e4\u05f4\u05d6","\u05ea\u05e9\u05e4\u05f4\u05d7","\u05ea\u05e9\u05e4\u05f4\u05d8","\u05ea\u05e9\u05f4\u05e5","\u05ea\u05e9\u05e6\u05f4\u05d0"];
+const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו"];
+const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv"];
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
 const mk=(c,l,ss,sha,nt,zm,s,e)=>({course:c,lec:l||"",ss:ss||0,sha:sha||0,notes:nt||"",zoom:!!zm,startH:s,endH:e});
 
@@ -283,7 +284,7 @@ function StatsPanel({staff,onUpdate}){
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3}},"קורסים חיצוניים"),
             d.ext.map((c,ei)=>h("div",{key:ei,style:rowStyle},
               h("input",{value:c.n,onChange:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-              h("input",{value:c.dept||"",onChange:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:60,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 4px",flexShrink:0,outline:"none",background:"#fff"}}),
+              h("input",{type:"text",value:c.dept||"",onChange:e=>{e.stopPropagation();upField(si,"ext",ei,"dept",e.target.value);},onFocus:e=>e.target.select(),placeholder:"חוג",style:{width:65,fontSize:9,border:"1px solid #93C5FD",borderRadius:4,padding:"3px 5px",flexShrink:0,outline:"none",background:"#EFF6FF",direction:"rtl"}}),
               h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"ext",ei,"ss",e.target.value),style:niStyle("#9CA3AF")}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"ext",ei)))),
@@ -343,9 +344,10 @@ function App(){
   // Load schedule + staff + banners from DB on year change
   useEffect(()=>{
     setDbSt("loading");
-    const schedId="sched_"+acY;
-    const staffId="staff_"+acY;
-    const bannerId="banners_"+acY;
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";
+    const schedId="sched_"+yk;
+    const staffId="staff_"+yk;
+    const bannerId="banners_"+yk;
     Promise.all([dbLoad(schedId),dbLoad(staffId),dbLoad(bannerId)]).then(([s,st,bn])=>{
       setSched(s||freshSched());
       setStaff(st||freshStaff());
@@ -356,34 +358,34 @@ function App(){
 
   // Realtime for schedule
   useEffect(()=>{
-    const ch=dbSub("sched_"+acY,nd=>setSched(nd));
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("sched_"+yk,nd=>setSched(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   // Realtime for staff
   useEffect(()=>{
-    const ch=dbSub("staff_"+acY,nd=>setStaff(nd));
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("staff_"+yk,nd=>setStaff(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   // Realtime for banners
   useEffect(()=>{
-    const ch=dbSub("banners_"+acY,nd=>setBanners(nd));
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ch=dbSub("banners_"+yk,nd=>setBanners(nd));
     return()=>sb.removeChannel(ch);
   },[acY]);
 
   const saveSchedDB=useCallback((nd)=>{
     clearTimeout(saveTimer.current);setSaving(true);
-    saveTimer.current=setTimeout(async()=>{const ok=await dbSave("sched_"+acY,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+    saveTimer.current=setTimeout(async()=>{const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ok=await dbSave("sched_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
   },[acY]);
 
   const saveStaffDB=useCallback((nd)=>{
     clearTimeout(staffTimer.current);setSaving(true);
-    staffTimer.current=setTimeout(async()=>{const ok=await dbSave("staff_"+acY,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
+    staffTimer.current=setTimeout(async()=>{const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";const ok=await dbSave("staff_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},600);
   },[acY]);
 
   const saveBannersDB=useCallback((nd)=>{
-    dbSave("banners_"+acY,nd);
+    const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";dbSave("banners_"+yk,nd);
   },[acY]);
 
   const cfls=useMemo(()=>getConflicts(sched),[sched]);
@@ -457,7 +459,7 @@ function App(){
             pdfItems.map((item,i)=>item.fn
               ?h("button",{key:i,onClick:()=>{item.fn();setPdf(false);},style:{width:"100%",padding:"9px 14px",border:"none",background:"none",textAlign:"right",fontSize:11,color:"#374151",cursor:"pointer",borderBottom:"1px solid #F3F4F6",fontFamily:"inherit"},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="none"},item.label)
               :h("div",{key:i,style:{padding:"5px 14px",fontSize:10,color:"#9CA3AF",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",fontWeight:600}},item.label)))),
-        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?"))dbSave("sched_"+acY,freshSched()).then(()=>{setSched(freshSched());dbSave("banners_"+acY,freshBanners()).then(()=>setBanners(freshBanners()));});},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
+        h("button",{onClick:()=>{if(window.confirm("לאפס לנתוני המקור?")){const yk=AYS_KEYS[AYS.indexOf(acY)]||"yr0";dbSave("sched_"+yk,freshSched()).then(()=>{setSched(freshSched());dbSave("banners_"+yk,freshBanners()).then(()=>setBanners(freshBanners()));});}},style:{padding:"5px 11px",borderRadius:8,border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#EF4444",fontSize:11,fontWeight:600}},"↺ איפוס")),
       view==="schedule"&&h("div",{style:{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:10,border:"0.5px solid #EDE9FE",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}},
         h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),
         Object.entries(CL).map(([n,l])=>h("span",{key:n,style:{background:l.bg,color:l.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+l.c+"25"}},n)),
