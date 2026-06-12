@@ -148,7 +148,7 @@ function computeLecSemesters(sched){
 
 // ══ PDF Export ══
 function exportPDF(yid,sched,banners,staffColors,label,acY){
-  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const zD=tab?tab.zD:[];
+  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const effectiveZD=zoomDays&&zoomDays[yid]?zoomDays[yid]:(tab?tab.zD:[]);const zD=tab?tab.zD:[];
   const occ={};DAYS.forEach(day=>{occ[day]={};(yd[day]||[]).forEach(c=>{const sp=c.endH-c.startH;occ[day][c.startH]={span:sp,cell:c};for(let i=1;i<sp;i++)occ[day][c.startH+i]={skip:true};});});
   let rows="";
   for(let hh=HS;hh<HE;hh++){
@@ -183,8 +183,8 @@ function getConflicts(sched,staffColors){
 }
 
 // ══ Grid ══
-function Grid({yid,sched,banners,staffColors,cSet,onEdit,onBannerEdit}){
-  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);
+function Grid({yid,sched,banners,staffColors,zoomDays,cSet,onEdit,onBannerEdit,onToggleZoom}){
+  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const effectiveZD=zoomDays&&zoomDays[yid]?zoomDays[yid]:(tab?tab.zD:[]);
   const totalH=NH*RH;const toY=hh=>(hh-HS)*RH;
   const banner=(banners&&banners[yid])||"";
   return h("div",null,
@@ -194,12 +194,13 @@ function Grid({yid,sched,banners,staffColors,cSet,onEdit,onBannerEdit}){
     h("div",{style:{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 220px)"}},
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)",position:"sticky",top:0,zIndex:20,background:"#F5F3FF",borderBottom:"2px solid #DDD6FE"}},
         h("div",{style:{height:44,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#5B21B6"}},"שעה"),
-        DAYS.map(d=>{const isZ=tab&&tab.zD&&tab.zD.includes(d);return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:1}},h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),isZ&&h("span",{style:{fontSize:9,fontWeight:700,color:"#fff",background:"#0369A1",borderRadius:99,padding:"1px 6px"}},"ZOOM"));})),
+        DAYS.map(d=>{const isZ=effectiveZD.includes(d);return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:1}},h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),
+            h("span",{onClick:e=>{e.stopPropagation();onToggleZoom(yid,d);},title:isZ?"הסר זום":"הוסף זום",style:{fontSize:8,fontWeight:700,color:isZ?"#fff":"#93C5FD",background:isZ?"#0369A1":"transparent",border:isZ?"none":"1px dashed #93C5FD",borderRadius:99,padding:"1px 5px",cursor:"pointer",marginTop:1}},isZ?"📹 זום":"+ זום"));})),
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)"}},
         h("div",{style:{position:"relative",height:totalH,borderRight:"1px solid #E5E7EB"}},
           Array.from({length:NH},(_,i)=>[h("div",{key:"b"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid #F3F4F6",background:i%2?"#FAFAFA":"#fff"}}),h("div",{key:"l"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,zIndex:1,pointerEvents:"none"}},HLBLS[i])]).flat()),
         DAYS.map(day=>{
-          const courses=yd[day]||[];const isDZ=tab&&tab.zD&&tab.zD.includes(day);
+          const courses=yd[day]||[];const isDZ=effectiveZD.includes(day);
           return h("div",{key:day,style:{position:"relative",height:totalH,borderRight:"1px solid #F3F4F6",background:isDZ?"#F0F8FF":undefined}},
             Array.from({length:NH},(_,i)=>h("div",{key:i,onClick:()=>onEdit(day,HS+i,null),style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid "+(isDZ?"#BFDBFE":"#F3F4F6"),background:isDZ?(i%2?"#EFF8FF":"#F5FBFF"):(i%2?"#FAFAFA":"#fff"),cursor:"pointer"}})),
             Array.from({length:NH},(_,i)=>{const hh=HS+i;if(courses.some(c=>c.startH<=hh&&c.endH>hh))return null;return h("div",{key:"p"+i,onClick:()=>onEdit(day,hh,null),style:{position:"absolute",top:i*RH+1,left:2,right:2,height:RH-2,borderRadius:5,border:"1px dashed "+(isDZ?"#93C5FD":"#DDD6FE"),cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:isDZ?"#93C5FD":"#C4B5FD",fontSize:14,zIndex:1},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="transparent"}," + ");}),
@@ -211,7 +212,7 @@ function Grid({yid,sched,banners,staffColors,cSet,onEdit,onBannerEdit}){
               const showZB=cell.zoom&&!isDZ;
               return h("div",{key:ci,onClick:()=>onEdit(day,cell.startH,cell),style:{position:"absolute",top:topPx+1,left:2,right:2,height:hPx-2,borderRadius:7,padding:"6px 8px",cursor:"pointer",background:isC?"#FEF2F2":st.bg,borderRight:"3px solid "+(isC?"#EF4444":st.c),border:"1px solid "+(isC?"#FCA5A5":st.c)+"22",zIndex:2,boxSizing:"border-box",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center"},onMouseEnter:e=>e.currentTarget.style.opacity="0.82",onMouseLeave:e=>e.currentTarget.style.opacity="1"},
                 isC&&h("span",{style:{position:"absolute",top:3,left:4,fontSize:9,color:"#EF4444"}},"⚠"),
-                showZB&&h("span",{style:{position:"absolute",top:3,right:4,fontSize:8,color:"#0369A1",fontWeight:700,background:"#DBEAFE",borderRadius:3,padding:"0 3px"}},"ZOOM"),
+                showZB&&
                 h("div",{style:{fontSize:11,fontWeight:700,color:isC?"#991B1B":st.c,lineHeight:1.3}},cell.course),
                 isS&&cell.lec&&h("div",{style:{fontSize:10,color:"#6B7280",marginTop:2}},getDisplayName(cell.lec,staffColors)),
                 !isS&&cell.extLecName&&h("div",{style:{fontSize:9,color:"#0369A1",marginTop:1}},cell.extLecName));
@@ -367,10 +368,9 @@ function StatsPanel({staff,sched,staffColors,onUpdate}){
             h("input",{type:"text",defaultValue:d.note||"",onBlur:e=>upNote(si,e.target.value),placeholder:"תווית",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:70,outline:"none"}}),
             h("button",{onClick:()=>delStaff(si),title:"מחק מרצה",style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:16,padding:"0",flexShrink:0}},"×")),
           // Totals + auto sems
-          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:9}},
+          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:9}},
             h("div",{style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},total.toFixed(2)),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},"שס")),
-            h("div",{style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},(total/2).toFixed(2)),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},"שש")),
-            h("div",{style:{background:"#F5F3FF",borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:14,fontWeight:700,color:"#5B21B6"}},"סמ "+autoSems),h("div",{style:{fontSize:9,color:"#5B21B6",opacity:.7}},"מהלוח"))),
+            h("div",{style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},(total/2).toFixed(2)),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},"שש"))),
           // Courses - sorted chronologically
           h("div",{style:{fontSize:10,marginBottom:5}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:2}},"קורסי מחלקה"),
@@ -498,6 +498,7 @@ function App(){
   const[bannerModal,setBannerModal]=useState(null);
   const[colorsModal,setColorsModal]=useState(false);
   const[backupOpen,setBackup]=useState(false);
+  const[zoomDays,setZoomDays]=useState({});
   const[saving,setSaving]=useState(false);
   const[pdfOpen,setPdf]=useState(false);
   const schedTimer=useRef(null);
@@ -506,11 +507,14 @@ function App(){
   useEffect(()=>{
     setDbSt("loading");
     const yk=getYK(acY);
-    Promise.all([dbLoad("sched_"+yk),dbLoad("staff_"+yk),dbLoad("banners_"+yk),dbLoad("staffcolors_"+yk)]).then(([sc,st,bn,scl])=>{
+    Promise.all([dbLoad("sched_"+yk),dbLoad("staff_"+yk),dbLoad("banners_"+yk),dbLoad("staffcolors_"+yk),dbLoad("zoom_"+yk)]).then(([sc,st,bn,scl,zm])=>{
+      // Init zoom from YTABS defaults
+      const defaultZoom={};YTABS.forEach(t=>{if(t.zD&&t.zD.length)defaultZoom[t.id]=[...t.zD];});
       if(sc)setSched(sc);
       if(st)setStaff(st);
       if(bn)setBanners(bn);
       if(scl)setStaffColors(scl);
+      setZoomDays(zm||defaultZoom);
       setDbSt("ok");
     }).catch(()=>setDbSt("error"));
   },[acY]);
@@ -518,6 +522,7 @@ function App(){
   useEffect(()=>{const yk=getYK(acY);const ch=dbSub("sched_"+yk,nd=>setSched(nd));return()=>sb.removeChannel(ch);},[acY]);
   useEffect(()=>{const yk=getYK(acY);const ch=dbSub("staff_"+yk,nd=>setStaff(nd));return()=>sb.removeChannel(ch);},[acY]);
   useEffect(()=>{const yk=getYK(acY);const ch=dbSub("banners_"+yk,nd=>setBanners(nd));return()=>sb.removeChannel(ch);},[acY]);
+  useEffect(()=>{const yk=getYK(acY);const ch=dbSub("zoom_"+yk,nd=>setZoomDays(nd));return()=>sb.removeChannel(ch);},[acY]);
 
   const saveSchedDB=useCallback((nd)=>{
     clearTimeout(schedTimer.current);setSaving(true);
@@ -563,6 +568,17 @@ function App(){
     setBackup(false);
   },[acY]);
 
+  const handleToggleZoom=useCallback((yid,day)=>{
+    setZoomDays(prev=>{
+      const next={...prev};
+      const current=next[yid]||(YTABS.find(t=>t.id===yid)?.zD||[]);
+      if(current.includes(day)){next[yid]=current.filter(d=>d!==day);}
+      else{next[yid]=[...current,day];}
+      const yk=getYK(acY);dbSave("zoom_"+yk,next);
+      return next;
+    });
+  },[acY]);
+
   if(!user)return h(Login,{onLogin:sUser});
 
   const bsc=YTABS.filter(t=>t.deg==="תואר ראשון"),msc=YTABS.filter(t=>t.deg==="תואר שני");
@@ -599,7 +615,7 @@ function App(){
         h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),
         Object.entries(staffColors).map(([n,v])=>h("span",{key:n,style:{background:v.bg,color:v.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+v.c+"25"}},v.full||n))),
       h("div",{style:{background:"#fff",borderRadius:13,border:"0.5px solid #EDE9FE",overflow:"hidden"}},
-        view==="schedule"&&h(Grid,{yid:ay,sched,banners,staffColors,cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c}),onBannerEdit:(yid,cur)=>setBannerModal({yid,cur})}),
+        view==="schedule"&&h(Grid,{yid:ay,sched,banners,staffColors,zoomDays,cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c}),onBannerEdit:(yid,cur)=>setBannerModal({yid,cur}),onToggleZoom:handleToggleZoom}),
         view==="stats"&&h(StatsPanel,{staff,sched,staffColors,onUpdate:handleStaffUpdate}),
         view==="conflicts"&&h(ConflictsPanel,{cfls}))),
     pdfOpen&&h("div",{style:{position:"fixed",inset:0,zIndex:99},onClick:()=>setPdf(false)}),
