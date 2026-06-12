@@ -148,7 +148,7 @@ function Grid({yid,sched,banners,staffColors,cSet,onEdit,onBannerEdit}){
   const totalH=NH*RH;const toY=hh=>(hh-HS)*RH;
   const banner=(banners&&banners[yid])||"";
   return h("div",null,
-    tab&&tab.fut&&h("div",{style:{background:"#FFF7ED",border:"1.5px solid #FED7AA",borderRadius:10,padding:"10px 14px",margin:"10px 10px 0",display:"flex",alignItems:"center",gap:8}},h("span",{style:{fontSize:13}},"🔜"),h("div",null,h("div",{style:{fontWeight:700,color:"#92400E",fontSize:12}},"הכנה לשנה הבאה"),h("div",{style:{color:"#B45309",fontSize:10}},"ריק - ניתן לשבץ קורסים"))),
+    
     h("div",{style:{margin:"10px 10px 0",background:"#DBEAFE",border:"1.5px solid #1E3A8A40",borderRight:"4px solid #1E3A8A",borderRadius:10,padding:"8px 14px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"},onClick:()=>onBannerEdit(yid,banner)},
       h("span",{style:{fontSize:14}},"📌"),h("span",{style:{fontWeight:700,color:"#1E3A8A",fontSize:12,flex:1}},banner||"לחץ להוספת הערה לפני הסמסטר..."),h("span",{style:{fontSize:11,color:"#1E3A8A",opacity:.6}},"✏️")),
     h("div",{style:{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 220px)"}},
@@ -195,10 +195,12 @@ function EditModal({day,startH,cell,yid,staffColors,onSave,onDelete,onClose}){
         h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
       h("div",{style:{marginBottom:11}},h("label",{style:L},"שם הקורס"),h("input",{className:"inp",value:f.course,onChange:e=>set("course",e.target.value),placeholder:"שם הקורס..."})),
       h("div",{style:{marginBottom:11}},h("label",{style:L},"מרצה (סגל קבוע = יופיע בצבע)"),
-        h("select",{className:"inp",value:f.lec,onChange:e=>set("lec",e.target.value)},
-          h("option",{value:""},"ללא מרצה / מרצה חיצוני"),
+        h("select",{className:"inp",value:f.lec,onChange:e=>{set("lec",e.target.value);if(e.target.value==="_ext_")set("extLec","");},style:{marginBottom:4}},
+          h("option",{value:""},"ללא מרצה"),
           h("optgroup",{label:"סגל קבוע"},staffNames.map(n=>h("option",{key:n,value:n},n+(staffColors[n].full?" ("+staffColors[n].full+")":"")))),
-          h("option",{value:"יקבע בהמשך"},"יקבע בהמשך"))),
+          h("option",{value:"יקבע בהמשך"},"יקבע בהמשך"),
+          h("option",{value:"_ext_"},"מרצה חיצוני (הזן שם)")),
+        f.lec==="_ext_"&&h("input",{className:"inp",value:f.extLec||"",onChange:e=>set("extLec",e.target.value),placeholder:"שם המרצה החיצוני (יופיע בהערות)"})),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:11}},
         h("div",null,h("label",{style:L},"שעת התחלה"),h("select",{className:"inp",value:f.startH,onChange:e=>set("startH",+e.target.value)},hopts.slice(0,-1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho))))),
         h("div",null,h("label",{style:L},"שעת סיום"),h("select",{className:"inp",value:f.endH,onChange:e=>set("endH",+e.target.value)},hopts.slice(1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho)))))),
@@ -208,7 +210,14 @@ function EditModal({day,startH,cell,yid,staffColors,onSave,onDelete,onClose}){
       h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:11}},h("input",{type:"checkbox",id:"zm",checked:!!f.zoom,onChange:e=>set("zoom",e.target.checked),style:{width:14,height:14}}),h("label",{htmlFor:"zm",style:{fontSize:12}},"זום / היברידי")),
       h("div",{style:{marginBottom:16}},h("label",{style:L},"הערות"),h("textarea",{className:"inp",value:f.notes,onChange:e=>set("notes",e.target.value),rows:2,style:{resize:"vertical"},placeholder:"הערות..."})),
       h("div",{style:{display:"flex",gap:8}},
-        h("button",{onClick:()=>onSave(day,f),style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
+        h("button",{onClick:()=>{
+          const form={...f};
+          if(form.lec==="_ext_"){
+            form.lec="";
+            if(form.extLec)form.notes=(form.notes?form.notes+" | ":"")+"מרצה: "+form.extLec;
+          }
+          onSave(day,form);
+        },style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
         cell&&h("button",{onClick:()=>onDelete(day,cell),style:{padding:"11px 16px",borderRadius:9,border:"1.5px solid #EF4444",background:"#FEF2F2",color:"#EF4444",fontSize:13,fontWeight:700}},"מחק"))));
 }
 
@@ -336,7 +345,8 @@ function StatsPanel({staff,sched,staffColors,onUpdate}){
               }
               return h("div",{key:ci,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2}},
                 h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-                h("span",{style:{...semStyle,background:autoSem?"#EDE9FE":"#F5F3FF",color:autoSem?"#5B21B6":"#9CA3AF",cursor:"default",userSelect:"none"}},autoSem||"-"),
+                h("select",{value:c.sem||autoSem||"",onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:{...semStyle,background:autoSem&&!c.sem?"#EDE9FE":"#F5F3FF",color:"#5B21B6",border:"1px solid #DDD6FE",cursor:"pointer"}},
+                  h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
                 h("input",{type:"number",step:".5",min:"0",defaultValue:c.ss,onBlur:e=>upField(si,"courses",ci,"ss",e.target.value),style:niStyle(l.c)}),
                 h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
                 delBtn(()=>delRow(si,"courses",ci)));
