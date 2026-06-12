@@ -16,43 +16,21 @@ button,select,input,textarea{font-family:inherit;cursor:pointer}
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPA_URL = "https://getsysxmaypwafenceqm.supabase.co";
-const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NzI3MjUsImV4cCI6MjA5MzI0ODcyNX0.ioVED3BP2CkdajgdeP9-kSUaJasXcvjSQd3VDcmqf-c";
-const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_URL="https://getsysxmaypwafenceqm.supabase.co";
+const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldHN5c3htYXlwd2FmZW5jZXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NzI3MjUsImV4cCI6MjA5MzI0ODcyNX0.ioVED3BP2CkdajgdeP9-kSUaJasXcvjSQd3VDcmqf-c";
+const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
 
-async function dbLoad(id){
-  try{
-    const {data,error}=await sb.from("schedule_data").select("data").eq("id",id).single();
-    if(error||!data||!data.data||Object.keys(data.data).length===0)return null;
-    return data.data;
-  }catch(e){return null;}
-}
-async function dbSave(id,d){
-  try{
-    const {error}=await sb.from("schedule_data").upsert({id,data:d,updated_at:new Date().toISOString()},{onConflict:"id"});
-    if(error){console.error("dbSave error:",error);return false;}
-    return true;
-  }catch(e){console.error("dbSave exception:",e);return false;}
-}
-function dbSub(id,cb){
-  return sb.channel("ch_"+id)
-    .on("postgres_changes",{event:"*",schema:"public",table:"schedule_data"},p=>{
-      if(p.new&&p.new.id===id&&p.new.data)cb(p.new.data);
-    }).subscribe();
-}
+async function dbLoad(id){try{const{data,error}=await sb.from("schedule_data").select("data").eq("id",id).single();if(error||!data||!data.data||Object.keys(data.data).length===0)return null;return data.data;}catch(e){return null;}}
+async function dbSave(id,d){try{const{error}=await sb.from("schedule_data").upsert({id,data:d,updated_at:new Date().toISOString()},{onConflict:"id"});if(error){console.error("save error",error);return false;}return true;}catch(e){console.error("save ex",e);return false;}}
+function dbSub(id,cb){return sb.channel("ch_"+id).on("postgres_changes",{event:"*",schema:"public",table:"schedule_data"},p=>{if(p.new&&p.new.id===id&&p.new.data)cb(p.new.data);}).subscribe();}
 
-const {useState,useMemo,useEffect,useCallback,useRef,createElement:h}=React;
+const{useState,useMemo,useEffect,useCallback,useRef,createElement:h}=React;
 const EMAILS=["shiris@ariel.ac.il","hagitsa@ariel.ac.il","orlybish@ariel.ac.il","veredks@ariel.ac.il"];
-
-// ══ Staff color registry — editable ══
 const DEFAULT_STAFF_COLORS={"שירי": {"full": "שירי שרף-דגן", "c": "#0F766E", "bg": "#CCFBF1"}, "אסף": {"full": "אסף בוך", "c": "#92400E", "bg": "#FEF3C7"}, "חגית": {"full": "חגית סאלם", "c": "#831843", "bg": "#FDF2F8"}, "אביגיל": {"full": "אביגיל נברו", "c": "#1E3A8A", "bg": "#DBEAFE"}, "קרן": {"full": "קרן הוד", "c": "#BE123C", "bg": "#FFF1F2"}, "רוני": {"full": "רוני אבירם-פרידמן", "c": "#C2410C", "bg": "#FFF7ED"}, "ורד": {"full": "ורד קאופמן-שריקי", "c": "#5B21B6", "bg": "#EDE9FE"}, "מונה": {"full": "מונה בועז", "c": "#0369A1", "bg": "#E0F2FE"}, "רות": {"full": "רות בירק", "c": "#166534", "bg": "#DCFCE7"}, "כרמית": {"full": "כרמית ספרא", "c": "#312E81", "bg": "#E0E7FF"}};
-
-// ══ Default data from backup ══
 const DEFAULT_SCHED={"m1a": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [], "שלישי": [{"ss": 1, "lec": "מונה", "sha": 0.5, "endH": 11, "zoom": false, "notes": "מונה / לאה", "course": "סטטיסטיקה לתואר שני", "startH": 9}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 13, "zoom": false, "notes": "", "course": "סטטיסטיקה לתואר שני תרגיל", "startH": 11}, {"ss": 2, "lec": "אביגיל", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "מדידת צריכה תזונתית", "startH": 13}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 17, "zoom": false, "notes": "", "course": "אכילה הדונית והתמכרות", "startH": 15}]}, "m1b": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [], "שלישי": [{"ss": 2, "lec": "רות", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "תזונה מולקולרית וגנטית", "startH": 9}, {"ss": 2, "lec": "אסף", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "סמינריון במטבוליזם", "startH": 11}, {"ss": 2, "lec": "מונה", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "שיטות מחקר מתקדמות", "startH": 13}, {"ss": 2, "lec": "קרן", "sha": 1, "endH": 17, "zoom": false, "notes": "", "course": "סמינריון ניהול וניתוח נתונים", "startH": 15}]}, "m2a": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [{"ss": 2, "lec": "ורד", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "Scientific writing", "startH": 9}, {"ss": 2, "lec": "ורד", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "טרנזיציה תזונתית", "startH": 11}, {"ss": 2, "lec": "שירי", "sha": 1, "endH": 15, "zoom": false, "notes": "זום", "course": "תיקוף ותרגום שאלונים", "startH": 13}, {"ss": 2, "lec": "אסף", "sha": 1, "endH": 17, "zoom": false, "notes": "", "course": "אפידמיולוגיה של גורמי סיכון", "startH": 15}, {"ss": 0, "lec": "", "sha": 0, "endH": 20, "zoom": false, "notes": "", "course": "תזה", "startH": 19}], "שלישי": []}, "m2b": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [{"ss": 2, "lec": "רות", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "סדנת מחקר מתקדם", "startH": 9}, {"ss": 2, "lec": "ורד", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "תרגום ידע מדעי בתזונה", "startH": 11}, {"ss": 2, "lec": "אביגיל", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "תזונה בהריון ועד ילדות מוקדמת", "startH": 13}], "שלישי": []}, "y1a": {"שני": [{"ss": 2, "lec": "דרפל הלנה", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "מתמטיקה למדעי הבריאות הרצאה", "startH": 9}, {"ss": 2, "lec": "", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "מתמטיקה למדעי הבריאות תרגיל", "startH": 11}, {"ss": 4, "lec": "חנן טלר", "sha": 2, "endH": 15, "zoom": false, "notes": "", "course": "כימיה כללית ופיזיקאלית הרצאה", "startH": 13}, {"ss": 2, "lec": "", "sha": 1, "endH": 17, "zoom": false, "notes": "", "course": "כימיה כללית ופיזיקאלית תרגיל", "startH": 15}], "חמישי": [{"ss": 2, "lec": "", "sha": 1, "endH": 13, "zoom": false, "notes": "אחת לשבועיים", "course": "מעבדה בכימיה כללית ופיזיקלית", "startH": 9}], "ראשון": [{"ss": 2, "lec": "נעוס אריאל", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "פיזיקה כללית", "startH": 9}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 12, "zoom": false, "notes": "", "course": "פיזיקה כללית תרגיל", "startH": 11}, {"ss": 4, "lec": "חנן טלר", "sha": 2, "endH": 14, "zoom": false, "notes": "", "course": "כימיה כללית ופיזיקאלית הרצאה", "startH": 12}, {"ss": 2, "lec": "אברהם אופיר שמש", "sha": 1, "endH": 16, "zoom": false, "notes": "", "course": "כשרות המזון", "startH": 14}, {"ss": 2, "lec": "", "sha": 1, "endH": 18, "zoom": false, "notes": "", "course": "תולדות המזון", "startH": 16}], "רביעי": [{"ss": 3.23, "lec": "כרמית", "sha": 1.61, "endH": 13, "zoom": false, "notes": "", "course": "תצפית במרפאות", "startH": 9}], "שלישי": [{"ss": 2, "lec": "יפתח שקד", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "ביולוגיה של התא", "startH": 9}, {"ss": 2, "lec": "אסף", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "תזונה וסביבה", "startH": 11}, {"ss": 2, "lec": "מונה", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "סטטיסטיקה למדעי הבריאות הרצאה", "startH": 13}, {"ss": 1, "lec": "אביגיל", "sha": 0.5, "endH": 16, "zoom": false, "notes": "", "course": "סטטיסטיקה למדעי הבריאות תרגיל", "startH": 15}]}, "y1b": {"שני": [{"ss": 3, "lec": "חגית", "sha": 1.5, "endH": 12, "zoom": false, "notes": "", "course": "אנטומיה ופיזיולוגיה של מערכות הגוף א", "startH": 9}, {"ss": 3, "lec": "", "sha": 1.5, "endH": 15, "zoom": false, "notes": "", "course": "כימיה אורגנית הרצאה", "startH": 12}], "חמישי": [{"ss": 2, "lec": "", "sha": 1, "endH": 13, "zoom": false, "notes": "אחת לשבועיים", "course": "מעבדה בכימיה אורגנית", "startH": 9}], "ראשון": [], "רביעי": [{"ss": 2, "lec": "", "sha": 1, "endH": 12, "zoom": false, "notes": "", "course": "כימיה אורגנית תרגיל", "startH": 9}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 14, "zoom": false, "notes": "", "course": "כתיבה וקריאה מודרכת", "startH": 12}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 16, "zoom": false, "notes": "", "course": "מבוא לתזונה", "startH": 14}, {"ss": 2, "lec": "אריאל לוי ניסנבוים", "sha": 1, "endH": 18, "zoom": false, "notes": "", "course": "כלכלת בריאות", "startH": 16}], "שלישי": [{"ss": 3, "lec": "מונה", "sha": 1.5, "endH": 11, "zoom": false, "notes": "", "course": "סטטיסטיקה בניסויים הרצאה", "startH": 8}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "תזונה טכנולוגיה ותעשיה", "startH": 11}, {"ss": 2, "lec": "גיל צוקרמן", "sha": 1, "endH": 15, "zoom": false, "notes": "היברידי", "course": "פסיכולוגיה כללית", "startH": 13}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 16, "zoom": false, "notes": "", "course": "סטטיסטיקה בניסויים תרגיל", "startH": 15}]}, "y2a": {"שני": [{"ss": 2, "lec": "חגית", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "תורת ההורמונים", "startH": 9}, {"ss": 3, "lec": "גדי תורגמן", "sha": 1.5, "endH": 14, "zoom": false, "notes": "", "course": "פתו פיזיולוגיה של מחלות א", "startH": 11}, {"ss": 2, "lec": "", "sha": 1, "endH": 16, "zoom": false, "notes": "", "course": "מבוא מיקרוביולוגיה", "startH": 14}], "חמישי": [{"ss": 3, "lec": "גדי תורגמן", "sha": 1.5, "endH": 12, "zoom": false, "notes": "", "course": "ביוכימיה וביולוגיה מולקולרית א שיעור", "startH": 9}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 13, "zoom": false, "notes": "", "course": "ביוכימיה וביולוגיה מולקולרית א תרגיל", "startH": 12}, {"ss": 2, "lec": "", "sha": 1, "endH": 18, "zoom": true, "notes": "בחירה זום", "course": "הטיפול באדם עם מגבלויות", "startH": 17}], "ראשון": [{"ss": 4.2, "lec": "אביגיל", "sha": 2.1, "endH": 14, "zoom": false, "notes": "לסירוגין", "course": "התנסות ביזמות ומחקר (אביגיל) / סיורים (חגית) לסירוגין", "startH": 8}], "רביעי": [{"ss": 3, "lec": "חגית", "sha": 1.5, "endH": 11, "zoom": false, "notes": "", "course": "אנטומיה ופיזיולוגיה של מערכות בגוף ב", "startH": 8}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "הפרעות אכילה", "startH": 11}, {"ss": 2, "lec": "", "sha": 1, "endH": 17, "zoom": false, "notes": "אחת לשבועיים", "course": "מעבדה בביוכימיה", "startH": 13}], "שלישי": [{"ss": 2, "lec": "רות", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "יסודות הגנטיקה הרצאה", "startH": 9}, {"ss": 2, "lec": "", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "יסודות הגנטיקה תרגיל", "startH": 11}, {"ss": 2, "lec": "אסף", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "מבוא לאפידמיולוגיה", "startH": 13}, {"ss": 2, "lec": "", "sha": 1, "endH": 17, "zoom": false, "notes": "נינה", "course": "פרמקולוגיה", "startH": 15}]}, "y2b": {"שני": [{"ss": 2.5, "lec": "ורד", "sha": 1.25, "endH": 12, "zoom": false, "notes": "", "course": "מבוא לדיאטטיקה הרצאה", "startH": 9}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 13, "zoom": false, "notes": "", "course": "מבוא לדיאטטיקה תרגיל", "startH": 12}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 14, "zoom": false, "notes": "", "course": "תזונת האדם א תרגיל", "startH": 13}, {"ss": 2, "lec": "", "sha": 1, "endH": 18, "zoom": false, "notes": "אחת לשבועיים", "course": "תזונת האדם מעבדה", "startH": 14}], "חמישי": [{"ss": 0, "lec": "", "sha": 0, "endH": 10, "zoom": false, "notes": "קורס חובה", "course": "עזרה ראשונה", "startH": 9}], "ראשון": [{"ss": 3, "lec": "חגית", "sha": 1.5, "endH": 11, "zoom": false, "notes": "", "course": "תזונת האדם א מאקרו", "startH": 8}, {"ss": 2, "lec": "גדי תורגמן", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "פתו פיזיולוגיה של מחלות ב", "startH": 11}, {"ss": 2, "lec": "", "sha": 1, "endH": 17, "zoom": false, "notes": "אחת לשבועיים", "course": "מעבדה בביולוגיה מולקולרית", "startH": 13}], "רביעי": [{"ss": 2, "lec": "ורד", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "תזונה בבריאות הציבור", "startH": 9}, {"ss": 2, "lec": "חגית", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "משק המים והמינראלים בגוף", "startH": 11}, {"ss": 3, "lec": "חגית", "sha": 1.5, "endH": 16, "zoom": false, "notes": "", "course": "תזונת האדם ב מיקרו", "startH": 13}, {"ss": 1, "lec": "", "sha": 0.5, "endH": 17, "zoom": false, "notes": "", "course": "תזונת האדם ב תרגיל", "startH": 16}], "שלישי": [{"ss": 1, "lec": "", "sha": 0.5, "endH": 10, "zoom": false, "notes": "", "course": "ביוכימיה וביולוגיה מולקולרית ב תרגיל", "startH": 9}, {"ss": 3, "lec": "אשרת רוקח", "sha": 1.5, "endH": 13, "zoom": false, "notes": "", "course": "ביוכימיה וביולוגיה מולקולרית ב שיעור", "startH": 10}, {"ss": 2, "lec": "רונית יערי", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "היבטים כימיים פיזיקאליים ורגולטוריים", "startH": 13}]}, "y3a": {"שני": [{"ss": 2.5, "lec": "קרן", "sha": 1.25, "endH": 12, "zoom": false, "notes": "", "course": "דיאטטיקה א סדנה", "startH": 8}, {"ss": 2.5, "lec": "קרן", "sha": 1.25, "endH": 16, "zoom": false, "notes": "", "course": "דיאטטיקה א שיעור", "startH": 12}, {"ss": 2, "lec": "חגית", "sha": 1, "endH": 18, "zoom": false, "notes": "", "course": "מיקרוביולוגיה ובטיחות מזון הרצאה", "startH": 16}], "חמישי": [{"ss": 2, "lec": "כרמית", "sha": 1, "endH": 16, "zoom": false, "notes": "4 מפגשים", "course": "קורס מלווה בריאות ציבור", "startH": 9}], "ראשון": [{"ss": 2, "lec": "שירי", "sha": 1, "endH": 11, "zoom": false, "notes": "", "course": "השמנה", "startH": 9}, {"ss": 2, "lec": "שי אשכנזי", "sha": 1, "endH": 13, "zoom": false, "notes": "", "course": "ביוכימיה קלינית", "startH": 11}, {"ss": 2, "lec": "מירי חדד", "sha": 1, "endH": 15, "zoom": false, "notes": "", "course": "תזונת ספורט", "startH": 13}, {"ss": 2, "lec": "אסף", "sha": 1, "endH": 17, "zoom": false, "notes": "", "course": "תזונה בגיל המבוגר", "startH": 15}], "רביעי": [], "שלישי": [{"ss": 2, "lec": "", "sha": 1, "endH": 15, "zoom": false, "notes": "לסירוגין", "course": "מיקרוביולוגיה מעבדה (חגית 9-13) / תורת המזון מעבדה (אורית יונה 9-15) לסירוגין", "startH": 9}]}, "y3b": {"שני": [{"ss": 2.5, "lec": "קרן", "sha": 1.25, "endH": 12, "zoom": false, "notes": "", "course": "דיאטטיקה ב סדנה", "startH": 8}, {"ss": 2.5, "lec": "קרן", "sha": 1.25, "endH": 16, "zoom": false, "notes": "", "course": "דיאטטיקה ב שיעור", "startH": 12}, {"ss": 2, "lec": "", "sha": 1, "endH": 18, "zoom": false, "notes": "", "course": "אימונולוגיה", "startH": 16}], "חמישי": [{"ss": 2, "lec": "", "sha": 1, "endH": 16, "zoom": false, "notes": "4 מפגשים", "course": "קורס מלווה מרפאות", "startH": 9}], "ראשון": [{"ss": 3, "lec": "אביגיל", "sha": 1.5, "endH": 15, "zoom": false, "notes": "לסירוגין", "course": "מעבדה בקולינריה (לורה) / תזונת ילדים (אביגיל) לסירוגין", "startH": 9}], "רביעי": [], "שלישי": [{"ss": 2, "lec": "טובית רוזנצוויג", "sha": 1, "endH": 10, "zoom": false, "notes": "", "course": "בקרה פיזיולוגית של משק האנרגיה", "startH": 8}, {"ss": 4, "lec": "קרן", "sha": 2, "endH": 14, "zoom": false, "notes": "", "course": "שיטות סקר ומחקר בתזונה", "startH": 10}, {"ss": 2, "lec": "אביגיל", "sha": 1, "endH": 16, "zoom": false, "notes": "", "course": "תורת הראיון סדנה", "startH": 14}, {"ss": 2, "lec": "רוני", "sha": 1, "endH": 18, "zoom": false, "notes": "", "course": "סמינריון", "startH": 16}]}, "y4a": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [], "שלישי": []}, "y4b": {"שני": [], "חמישי": [], "ראשון": [], "רביעי": [], "שלישי": []}};
 const DEFAULT_STAFF=[{"ext": [], "name": "ורד", "note": "", "bonuses": [{"n": "גמול ראש תוכנית מ.א", "ss": 2}, {"n": "החלפת רמח סמסטר ב", "ss": 2}], "courses": [{"n": "Scientific writing", "ss": 2}, {"n": "טרנזיציה תזונתית", "ss": 2}, {"n": "מבוא לדיאטטיקה", "ss": 2.5}, {"n": "תזונה בבריאות הציבור", "ss": 2}, {"n": "תרגום ידע מדעי בתזונה", "ss": 2}]}, {"ext": [{"n": "סטטיסטיקה לרפואה", "ss": 2, "dept": "רפואה"}, {"n": "אפידמיולוגיה ובריאות ציבור", "ss": 2, "dept": "רפואה"}], "name": "מונה", "note": "", "bonuses": [], "courses": [{"n": "סטטיסטיקה לתואר שני", "ss": 1}, {"n": "סטטיסטיקה למדעי הבריאות", "ss": 2}, {"n": "סטטיסטיקה בניסויים", "ss": 3}, {"n": "שיטות מחקר מתקדמות בתזונה", "ss": 2}]}, {"ext": [{"n": "גנטיקה רפואית", "ss": 3, "dept": "רפואה"}, {"n": "גנטיקה", "ss": 3, "dept": "קדם רפואה"}], "name": "רות", "note": "", "bonuses": [], "courses": [{"n": "יסודות הגנטיקה", "ss": 2}, {"n": "תזונה מולקולרית וגנטית", "ss": 2}, {"n": "סדנת מחקר מתקדם", "ss": 2}]}, {"ext": [{"n": "סדנא בהרכב גוף", "ss": 2, "dept": "פיזיותרפיה"}], "name": "אסף", "note": "", "bonuses": [{"n": "גמול סגנית ת.ראשון", "ss": 2}], "courses": [{"n": "תזונה וסביבה", "ss": 2}, {"n": "מבוא לאפידמיולוגיה", "ss": 2}, {"n": "תזונה בגיל המבוגר", "ss": 2}, {"n": "אפידמיולוגיה של גורמי סיכון", "ss": 2}, {"n": "סמינריון במטבוליזם", "ss": 2}]}, {"ext": [], "name": "קרן", "note": "", "bonuses": [{"n": "גמול אחראי שיווק", "ss": 1}], "courses": [{"n": "דיאטטיקה א", "ss": 2.5}, {"n": "דיאטטיקה ב", "ss": 2.5}, {"n": "שיטות סקר ומחקר", "ss": 4}, {"n": "סמינריון ניהול וניתוח נתונים", "ss": 2}]}, {"ext": [{"n": "תרגול סטטיסטיקה", "ss": 1, "dept": 0}], "name": "אביגיל", "note": "", "bonuses": [], "courses": [{"n": "הכרות עם עבודת הדיאטן", "ss": 1}, {"n": "התנסות ביזמות ומחקר", "ss": 3.2}, {"n": "מדידת צריכה תזונתית", "ss": 2}, {"n": "סטטיסטיקה למדעי הבריאות תרגיל", "ss": 1}, {"n": "תזונה בהריון ובשנות החיים הראשונות", "ss": 2}, {"n": "תזונת ילדים", "ss": 3}, {"n": "תורת הראיון סדנה", "ss": 2}]}, {"ext": [{"n": "תזונה בחיי היומיום", "ss": 2, "dept": "כללי"}, {"n": "תזונה בבריאות ורווחה סיעוד", "ss": 2, "dept": "סיעוד"}], "name": "רוני", "note": "", "bonuses": [], "courses": [{"n": "אכילה הדונית והתמכרות", "ss": 2}, {"n": "הפרעות אכילה", "ss": 2}, {"n": "כתיבה וקריאה מודרכת", "ss": 2}, {"n": "מבוא לתזונה", "ss": 2}, {"n": "תזונה טכנולוגיה ותעשייה", "ss": 2}, {"n": "סמינריון", "ss": 2}]}, {"ext": [], "name": "שירי", "note": "שבתון", "bonuses": [{"n": "גמול תפקיד רמח", "ss": 4}], "courses": [{"n": "תיקוף ותרגום שאלונים", "ss": 2}, {"n": "השמנה", "ss": 2}]}, {"ext": [{"n": "אבות מזון ומיקרונוטריאנטים", "ss": 3, "dept": "הנדסה כימית"}], "name": "חגית", "note": "", "bonuses": [{"n": "רכזת הוראה מחלקתית", "ss": 1}], "courses": [{"n": "סיורים חטיבת מחקר ויזמות", "ss": 1}, {"n": "תורת ההורמונים", "ss": 2}, {"n": "מיקרוביולוגיה ובטיחות מזון הרצאה", "ss": 2}, {"n": "מיקרוביולוגיה ובטיחות מזון מעבדה", "ss": 2}, {"n": "אנטומיה ופיזיולוגיה מערכות בגוף ב", "ss": 3}, {"n": "אנטומיה ופיזיולוגיה מערכות הגוף א", "ss": 3}, {"n": "תזונת האדם א מאקרו", "ss": 3}, {"n": "תזונת האדם ב מיקרו", "ss": 3}, {"n": "משק המים והמינראלים בגוף", "ss": 2}]}, {"ext": [], "name": "כרמית", "note": "", "bonuses": [], "courses": [{"n": "תצפית במרפאות", "ss": 3.23}, {"n": "התנסות בריאות ציבור", "ss": 3.32}, {"n": "קורס מלווה בריאות ציבור", "ss": 2}, {"n": "התנסות במרפאות", "ss": 3.32}, {"n": "היבטים כימיים", "ss": 0.33}]}];
 const DEFAULT_BANNERS={"y1a": "לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל (1 שס)"};
 
-// ══ Tab definitions ══
 const DAYS=["ראשון","שני","שלישי","רביעי","חמישי"];
 const HS=8,HE=21,NH=HE-HS;
 const HLBLS=Array.from({length:NH+1},(_,i)=>String(HS+i).padStart(2,"0")+":00");
@@ -73,129 +51,76 @@ const YTABS=[
 ];
 const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו"];
 const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv"];
-function getYK(acY){const i=AYS.findIndex(y=>y===acY);return i>=0?AYS_KEYS[i]:"tshpz";}
+function getYK(y){const i=AYS.findIndex(a=>a===y);return i>=0?AYS_KEYS[i]:"tshpz";}
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
-const mk=(c,l,ss,sha,nt,zm,s,e)=>({course:c,lec:l||"",ss:ss||0,sha:sha||0,notes:nt||"",zoom:!!zm,startH:s,endH:e});
 
-// ══ Color helpers ══
-function getDisplayName(lecName, staffColors){
-  if(!lecName||!staffColors)return lecName||"";
-  if(staffColors[lecName]&&staffColors[lecName].full)return staffColors[lecName].full;
-  for(const[k,v]of Object.entries(staffColors)){
-    if((lecName.includes(k)||k.includes(lecName))&&v.full)return v.full;
-  }
-  return lecName;
-}
+function getDisplayName(n,sc){if(!n||!sc)return n||"";if(sc[n]&&sc[n].full)return sc[n].full;for(const[k,v]of Object.entries(sc))if((n.includes(k)||k.includes(n))&&v.full)return v.full;return n;}
+function getStaffColor(n,sc){if(!n||!sc)return{c:"#6B7280",bg:"#F3F4F6"};if(sc[n])return{c:sc[n].c,bg:sc[n].bg};for(const[k,v]of Object.entries(sc))if(n.includes(k)||k.includes(n))return{c:v.c,bg:v.bg};return{c:"#6B7280",bg:"#F3F4F6"};}
+function isStaff(n,sc){if(!n||!sc)return false;if(sc[n])return true;for(const k of Object.keys(sc))if(n.includes(k)||k.includes(n))return true;return false;}
+function fmtH(h){return String(Math.floor(h)).padStart(2,"0")+":"+(h%1===.5?"30":"00");}
+function getDayOrder(d){return DAYS.indexOf(d);}
 
-function getStaffColor(lecName, staffColors){
-  if(!lecName||!staffColors)return{c:"#6B7280",bg:"#F3F4F6"};
-  // exact match first
-  if(staffColors[lecName])return{c:staffColors[lecName].c,bg:staffColors[lecName].bg};
-  // partial match
-  for(const[k,v]of Object.entries(staffColors)){
-    if(lecName.includes(k)||k.includes(lecName))return{c:v.c,bg:v.bg};
-  }
-  return{c:"#6B7280",bg:"#F3F4F6"};
-}
-function isStaffMember(lecName, staffColors){
-  if(!lecName||!staffColors)return false;
-  if(staffColors[lecName])return true;
-  for(const k of Object.keys(staffColors)){
-    if(lecName.includes(k)||k.includes(lecName))return true;
-  }
-  return false;
-}
-
-// ══ Compute semesters per lecturer from sched ══
-function getDayOrder(day){return["ראשון","שני","שלישי","רביעי","חמישי"].indexOf(day);}
-
-function computeLecCourseSchedule(sched){
+function computeLecSchedule(sched){
   const map={};
-  YTABS.forEach(tab=>{
-    const yd=sched[tab.id]||{};
-    DAYS.forEach(day=>{
-      (yd[day]||[]).forEach(c=>{
-        if(!c||!c.lec)return;
-        if(!map[c.lec])map[c.lec]={};
-        if(!map[c.lec][c.course]){
-          map[c.lec][c.course]={sem:tab.sem,day,startH:c.startH,endH:c.endH};
-        }
-      });
-    });
-  });
+  YTABS.forEach(tab=>{const yd=sched[tab.id]||{};DAYS.forEach(day=>{(yd[day]||[]).forEach(c=>{if(!c||!c.lec)return;if(!map[c.lec])map[c.lec]={};if(!map[c.lec][c.course])map[c.lec][c.course]={sem:tab.sem,day,startH:c.startH,endH:c.endH};});});});
   return map;
 }
 
-function fmtH(h){return String(Math.floor(h)).padStart(2,"0")+":"+(h%1===.5?"30":"00");}
-
-function computeLecSemesters(sched){
+function computeLecSems(sched){
   const map={};
-  YTABS.forEach(tab=>{
-    const yd=sched[tab.id]||{};
-    DAYS.forEach(day=>{
-      (yd[day]||[]).forEach(c=>{
-        if(!c||!c.lec)return;
-        const key=c.lec;
-        if(!map[key])map[key]=new Set();
-        map[key].add(tab.sem);
-      });
-    });
-  });
-  const result={};
-  for(const[k,v]of Object.entries(map))result[k]=[...v].sort().join(", ");
-  return result;
+  YTABS.forEach(t=>{const yd=sched[t.id]||{};DAYS.forEach(d=>{(yd[d]||[]).forEach(c=>{if(!c||!c.lec)return;if(!map[c.lec])map[c.lec]=new Set();map[c.lec].add(t.sem);});});});
+  const r={};for(const[k,v]of Object.entries(map))r[k]=[...v].sort().join("+");return r;
 }
 
-// ══ PDF Export ══
-function exportPDF(yid,sched,banners,staffColors,label,acY){
-  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const effectiveZD=zoomDays&&zoomDays[yid]?zoomDays[yid]:(tab?tab.zD:[]);const zD=tab?tab.zD:[];
+function getConflicts(sched,sc){
+  const m={};
+  YTABS.forEach(t=>{const yd=sched[t.id]||{};DAYS.forEach(day=>{(yd[day]||[]).forEach(c=>{if(!c||!c.lec||!isStaff(c.lec,sc))return;for(let hh=c.startH;hh<c.endH;hh++){const k=t.sem+"|"+c.lec+"|"+day+"|"+hh;if(!m[k])m[k]=[];m[k].push({yid:t.id,course:c.course,startH:c.startH});}});});});
+  const seen=new Set();
+  return Object.entries(m).filter(([,s])=>s.length>1).map(([k,slots])=>{const[sem,lec,day]=k.split("|");const uk=sem+"|"+lec+"|"+day+"|"+slots[0].startH;if(seen.has(uk))return null;seen.add(uk);return{sem,lec,day,slots};}).filter(Boolean);
+}
+
+function exportPDF(yid,sched,banners,sc,label,acY){
+  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);
+  const zD=tab?tab.zD:[];
   const occ={};DAYS.forEach(day=>{occ[day]={};(yd[day]||[]).forEach(c=>{const sp=c.endH-c.startH;occ[day][c.startH]={span:sp,cell:c};for(let i=1;i<sp;i++)occ[day][c.startH+i]={skip:true};});});
   let rows="";
   for(let hh=HS;hh<HE;hh++){
     let cols='<td class="tc">'+String(hh).padStart(2,"0")+':00</td>';
-    DAYS.forEach(day=>{const o=occ[day][hh];if(o&&o.skip)return;if(!o){cols+='<td></td>';return;}const c=o.cell;
-      const _sc=staffColors||{};
+    DAYS.forEach(day=>{
+      const o=occ[day][hh];if(o&&o.skip)return;if(!o){cols+='<td></td>';return;}
+      const c=o.cell;const _sc=sc||{};
       let _st={c:"#6B7280",bg:"#F9FAFB"};let _isS=false;
       if(c.lec&&_sc[c.lec]){_st={c:_sc[c.lec].c,bg:_sc[c.lec].bg};_isS=true;}
       else if(c.lec){for(const[k,v]of Object.entries(_sc)){if(c.lec.includes(k)||k.includes(c.lec)){_st={c:v.c,bg:v.bg};_isS=true;break;}}}
-      cols+='<td rowspan="'+o.span+'" style="padding:2px"><div style="border-radius:5px;padding:4px;height:100%;background:'+(_isS?_st.bg:"#F9FAFB")+';border-right:3px solid '+(_isS?_st.c:"#D1D5DB")+';font-size:10px;display:flex;flex-direction:column;justify-content:center;overflow:hidden"><div style="font-weight:700;color:'+(_isS?_st.c:"#374151")+'">'+c.course+'</div>'+(_isS&&c.lec?'<div style="color:#6B7280;font-size:9px">'+(_sc[c.lec]&&_sc[c.lec].full?_sc[c.lec].full:c.lec)+'</div>':"")+'</div></td>';});
+      const dispName=_isS&&c.lec?(_sc[c.lec]&&_sc[c.lec].full?_sc[c.lec].full:c.lec):"";
+      cols+='<td rowspan="'+o.span+'" style="padding:2px"><div style="border-radius:5px;padding:4px;height:100%;background:'+(_isS?_st.bg:"#F9FAFB")+';border-right:3px solid '+(_isS?_st.c:"#D1D5DB")+';font-size:10px;display:flex;flex-direction:column;justify-content:center;overflow:hidden"><div style="font-weight:700;color:'+(_isS?_st.c:"#374151")+'">'+c.course+'</div>'+(dispName?'<div style="color:#6B7280;font-size:9px">'+dispName+'</div>':"")+(c.extLecName?'<div style="color:#0369A1;font-size:9px">'+c.extLecName+'</div>':"")+'</div></td>';
+    });
     rows+='<tr>'+cols+'</tr>';
   }
   const banner=(banners&&banners[yid])||"";
   const bHtml=banner?'<div style="background:#DBEAFE;border-right:4px solid #1E3A8A;border-radius:7px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#1E3A8A;font-weight:600">'+banner+'</div>':"";
-  const legend='';
-  const win=window.open("","_blank");
-  if(!win){alert("אפשר חלוניות קופצות");return;}
-  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:16px;font-size:11px}h1{font-size:15px;color:#3B0764;text-align:center;margin-bottom:3px}.sub{text-align:center;color:#6B7280;font-size:10px;margin-bottom:10px}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#F5F3FF;color:#5B21B6;font-size:11px;font-weight:700;padding:6px 3px;border:1px solid #DDD6FE;text-align:center}th.z{background:#DBEFFE;color:#0369A1}td{border:1px solid #E5E7EB;vertical-align:top;height:38px}.tc{background:#FAFAFA;color:#9CA3AF;font-size:10px;text-align:center;vertical-align:middle;width:8%}@media print{@page{size:A4 landscape;margin:1cm}.np{display:none}}</style></head><body><h1>המחלקה למדעי התזונה - אריאל</h1><div class="sub">'+label+' | '+acY+'</div>'+bHtml+'<table><thead><tr><th style="width:8%">שעה</th>'+DAYS.map(d=>'<th class="'+(zD.includes(d)?"z":"")+'">'+d+(zD.includes(d)?" ZOOM":"")+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table><div style="margin-top:8px">'+legend+'</div><div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
+  const win=window.open("","_blank");if(!win){alert("אפשר חלוניות קופצות");return;}
+  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:16px;font-size:11px}h1{font-size:15px;color:#3B0764;text-align:center;margin-bottom:3px}.sub{text-align:center;color:#6B7280;font-size:10px;margin-bottom:10px}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#F5F3FF;color:#5B21B6;font-size:11px;font-weight:700;padding:6px 3px;border:1px solid #DDD6FE;text-align:center}th.z{background:#DBEFFE;color:#0369A1}td{border:1px solid #E5E7EB;vertical-align:top;height:38px}.tc{background:#FAFAFA;color:#9CA3AF;font-size:10px;text-align:center;vertical-align:middle;width:8%}@media print{@page{size:A4 landscape;margin:1cm}.np{display:none}}</style></head><body><h1>המחלקה למדעי התזונה - אריאל</h1><div class="sub">'+label+' | '+acY+'</div>'+bHtml+'<table><thead><tr><th style="width:8%">שעה</th>'+DAYS.map(d=>'<th class="'+(zD.includes(d)?"z":"")+'">'+d+(zD.includes(d)?" ZOOM":"")+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table><div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
   win.document.close();
 }
 
-function getConflicts(sched,staffColors){
-  const m={};
-  YTABS.forEach(t=>{const yd=sched[t.id];if(!yd)return;const sem=t.sem;DAYS.forEach(day=>{(yd[day]||[]).forEach(c=>{if(!c||!c.lec||!isStaffMember(c.lec,staffColors))return;for(let hh=c.startH;hh<c.endH;hh++){const k=sem+"|"+c.lec+"|"+day+"|"+hh;if(!m[k])m[k]=[];m[k].push({yid:t.id,course:c.course,startH:c.startH,endH:c.endH});}});});});
-  const seen=new Set();
-  return Object.entries(m).filter(([,s])=>s.length>1).map(([k,slots])=>{
-    const[sem,lec,day]=k.split("|");
-    const uk=sem+"|"+lec+"|"+day+"|"+slots[0].startH;
-    if(seen.has(uk))return null;seen.add(uk);
-    return{sem,lec,day,slots};
-  }).filter(Boolean);
-}
-
 // ══ Grid ══
-function Grid({yid,sched,banners,staffColors,zoomDays,cSet,onEdit,onBannerEdit,onToggleZoom}){
-  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);const effectiveZD=zoomDays&&zoomDays[yid]?zoomDays[yid]:(tab?tab.zD:[]);
+function Grid({yid,sched,banners,sc,zoomDays,cSet,onEdit,onBannerEdit,onToggleZoom}){
+  const yd=sched[yid]||EM();const tab=YTABS.find(t=>t.id===yid);
   const totalH=NH*RH;const toY=hh=>(hh-HS)*RH;
   const banner=(banners&&banners[yid])||"";
+  const effectiveZD=(zoomDays&&zoomDays[yid])?zoomDays[yid]:(tab?tab.zD:[]);
   return h("div",null,
-    
     h("div",{style:{margin:"10px 10px 0",background:"#DBEAFE",border:"1.5px solid #1E3A8A40",borderRight:"4px solid #1E3A8A",borderRadius:10,padding:"8px 14px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"},onClick:()=>onBannerEdit(yid,banner)},
       h("span",{style:{fontSize:14}},"📌"),h("span",{style:{fontWeight:700,color:"#1E3A8A",fontSize:12,flex:1}},banner||"לחץ להוספת הערה לפני הסמסטר..."),h("span",{style:{fontSize:11,color:"#1E3A8A",opacity:.6}},"✏️")),
     h("div",{style:{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 220px)"}},
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)",position:"sticky",top:0,zIndex:20,background:"#F5F3FF",borderBottom:"2px solid #DDD6FE"}},
-        h("div",{style:{height:44,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#5B21B6"}},"שעה"),
-        DAYS.map(d=>{const isZ=effectiveZD.includes(d);return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:1}},h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),
-            h("span",{onClick:e=>{e.stopPropagation();onToggleZoom(yid,d);},title:isZ?"הסר זום":"הוסף זום",style:{fontSize:8,fontWeight:700,color:isZ?"#fff":"#93C5FD",background:isZ?"#0369A1":"transparent",border:isZ?"none":"1px dashed #93C5FD",borderRadius:99,padding:"1px 5px",cursor:"pointer",marginTop:1}},isZ?"📹 זום":"+ זום"));})),
+        h("div",{style:{height:50,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#5B21B6"}},"שעה"),
+        DAYS.map(d=>{
+          const isZ=effectiveZD.includes(d);
+          return h("div",{key:d,style:{borderRight:"1px solid #EDE9FE",height:50,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isZ?"#DBEFFE":"#F5F3FF",gap:2}},
+            h("span",{style:{fontSize:12,fontWeight:700,color:isZ?"#0369A1":"#5B21B6"}},d),
+            h("span",{onClick:e=>{e.stopPropagation();onToggleZoom(yid,d);},title:isZ?"הסר זום":"הוסף זום",style:{fontSize:8,fontWeight:700,color:isZ?"#fff":"#93C5FD",background:isZ?"#0369A1":"transparent",border:isZ?"none":"1px dashed #93C5FD",borderRadius:99,padding:"1px 5px",cursor:"pointer"}},isZ?"📹 זום":"+ זום"));})),
       h("div",{style:{minWidth:680,display:"grid",gridTemplateColumns:"68px repeat(5,1fr)"}},
         h("div",{style:{position:"relative",height:totalH,borderRight:"1px solid #E5E7EB"}},
           Array.from({length:NH},(_,i)=>[h("div",{key:"b"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid #F3F4F6",background:i%2?"#FAFAFA":"#fff"}}),h("div",{key:"l"+i,style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,zIndex:1,pointerEvents:"none"}},HLBLS[i])]).flat()),
@@ -203,32 +128,30 @@ function Grid({yid,sched,banners,staffColors,zoomDays,cSet,onEdit,onBannerEdit,o
           const courses=yd[day]||[];const isDZ=effectiveZD.includes(day);
           return h("div",{key:day,style:{position:"relative",height:totalH,borderRight:"1px solid #F3F4F6",background:isDZ?"#F0F8FF":undefined}},
             Array.from({length:NH},(_,i)=>h("div",{key:i,onClick:()=>onEdit(day,HS+i,null),style:{position:"absolute",top:i*RH,left:0,right:0,height:RH,borderBottom:"1px solid "+(isDZ?"#BFDBFE":"#F3F4F6"),background:isDZ?(i%2?"#EFF8FF":"#F5FBFF"):(i%2?"#FAFAFA":"#fff"),cursor:"pointer"}})),
-            Array.from({length:NH},(_,i)=>{const hh=HS+i;if(courses.some(c=>c.startH<=hh&&c.endH>hh))return null;return h("div",{key:"p"+i,onClick:()=>onEdit(day,hh,null),style:{position:"absolute",top:i*RH+1,left:2,right:2,height:RH-2,borderRadius:5,border:"1px dashed "+(isDZ?"#93C5FD":"#DDD6FE"),cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:isDZ?"#93C5FD":"#C4B5FD",fontSize:14,zIndex:1},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="transparent"}," + ");}),
+            Array.from({length:NH},(_,i)=>{const hh=HS+i;if(courses.some(c=>c.startH<=hh&&c.endH>hh))return null;return h("div",{key:"p"+i,onClick:()=>onEdit(day,hh,null),style:{position:"absolute",top:i*RH+1,left:2,right:2,height:RH-2,borderRadius:5,border:"1px dashed "+(isDZ?"#93C5FD":"#DDD6FE"),cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:isDZ?"#93C5FD":"#C4B5FD",fontSize:14,zIndex:1},onMouseEnter:e=>{e.currentTarget.style.background="#F5F3FF";},onMouseLeave:e=>{e.currentTarget.style.background="transparent";}}," + ");}),
             courses.map((cell,ci)=>{
               const topPx=toY(cell.startH),hPx=(cell.endH-cell.startH)*RH;
-              const isS=isStaffMember(cell.lec,staffColors);
-              const st=isS?getStaffColor(cell.lec,staffColors):{c:"#6B7280",bg:"#F9FAFB"};
+              const isS=isStaff(cell.lec,sc);
+              const st=isS?getStaffColor(cell.lec,sc):{c:"#6B7280",bg:"#F9FAFB"};
               const isC=cSet.has(yid.slice(-1)+"|"+cell.lec+"|"+day+"|"+cell.startH);
-              const showZB=cell.zoom&&!isDZ;
               return h("div",{key:ci,onClick:()=>onEdit(day,cell.startH,cell),style:{position:"absolute",top:topPx+1,left:2,right:2,height:hPx-2,borderRadius:7,padding:"6px 8px",cursor:"pointer",background:isC?"#FEF2F2":st.bg,borderRight:"3px solid "+(isC?"#EF4444":st.c),border:"1px solid "+(isC?"#FCA5A5":st.c)+"22",zIndex:2,boxSizing:"border-box",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center"},onMouseEnter:e=>e.currentTarget.style.opacity="0.82",onMouseLeave:e=>e.currentTarget.style.opacity="1"},
                 isC&&h("span",{style:{position:"absolute",top:3,left:4,fontSize:9,color:"#EF4444"}},"⚠"),
-                showZB&&
                 h("div",{style:{fontSize:11,fontWeight:700,color:isC?"#991B1B":st.c,lineHeight:1.3}},cell.course),
-                isS&&cell.lec&&h("div",{style:{fontSize:10,color:"#6B7280",marginTop:2}},getDisplayName(cell.lec,staffColors)),
+                isS&&cell.lec&&h("div",{style:{fontSize:10,color:"#6B7280",marginTop:1}},getDisplayName(cell.lec,sc)),
                 !isS&&cell.extLecName&&h("div",{style:{fontSize:9,color:"#0369A1",marginTop:1}},cell.extLecName));
             }));
         }))));
 }
 
-// ══ Edit Modal ══
-function EditModal({day,startH,cell,yid,staffColors,onSave,onDelete,onClose}){
+// ══ EditModal ══
+function EditModal({day,startH,cell,yid,sc,onSave,onDelete,onClose}){
   const tab=YTABS.find(t=>t.id===yid);
-  const[f,sf]=useState(cell?Object.assign({},cell):{course:"",lec:"",ss:2,sha:1,notes:"",zoom:false,startH,endH:startH+2});
+  const[f,sf]=useState(cell?Object.assign({},cell):{course:"",lec:"",extLecName:"",ss:2,sha:1,notes:"",zoom:false,startH,endH:startH+2});
   const set=(k,v)=>sf(p=>Object.assign({},p,{[k]:v}));
-  const fmtH=hh=>String(Math.floor(hh)).padStart(2,"0")+":"+(hh%1===.5?"30":"00");
+  const fmtH2=hh=>String(Math.floor(hh)).padStart(2,"0")+":"+(hh%1===.5?"30":"00");
   const hopts=Array.from({length:NH+1},(_,i)=>HS+i);
   const L={fontSize:11,color:"#6B7280",fontWeight:600,display:"block",marginBottom:4};
-  const staffNames=Object.keys(staffColors||{});
+  const staffNames=Object.keys(sc||{});
   return h("div",{style:{position:"relative",zIndex:50}},
     h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
     h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:22,width:440,maxWidth:"94vw",maxHeight:"90vh",overflowY:"auto",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
@@ -236,192 +159,144 @@ function EditModal({day,startH,cell,yid,staffColors,onSave,onDelete,onClose}){
         h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:"#3B0764",marginBottom:2}},cell?"עריכת קורס":"הוספת קורס"),h("div",{style:{fontSize:10,color:"#9CA3AF"}},day+" - "+(tab?tab.lbl:""))),
         h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
       h("div",{style:{marginBottom:11}},h("label",{style:L},"שם הקורס"),h("input",{className:"inp",value:f.course,onChange:e=>set("course",e.target.value),placeholder:"שם הקורס..."})),
-      h("div",{style:{marginBottom:11}},h("label",{style:L},"מרצה (סגל קבוע = יופיע בצבע)"),
+      h("div",{style:{marginBottom:11}},h("label",{style:L},"מרצה"),
         h("select",{className:"inp",value:f.lec,onChange:e=>set("lec",e.target.value)},
-          h("option",{value:""},"ללא מרצה"),
-          h("optgroup",{label:"סגל קבוע"},staffNames.map(n=>h("option",{key:n,value:n},staffColors[n].full||n))),
-          h("option",{value:"יקבע בהמשך"},"יקבע בהמשך")),
-        f.lec==="_ext_"&&h("input",{className:"inp",value:f.extLec||"",onChange:e=>set("extLec",e.target.value),placeholder:"שם המרצה החיצוני (יופיע בהערות)"})),
+          h("option",{value:""},"— בחר מרצה —"),
+          h("optgroup",{label:"סגל קבוע"},staffNames.map(n=>h("option",{key:n,value:n},(sc[n]&&sc[n].full)||n))),
+          h("option",{value:"מרצה חיצוני"},"מרצה חיצוני"),
+          h("option",{value:"יקבע בהמשך"},"יקבע בהמשך"))),
+      h("div",{style:{marginBottom:11,background:"#F0F9FF",borderRadius:8,padding:"8px 10px",border:"1px solid #BAE6FD"}},
+        h("label",{style:{...L,color:"#0369A1"}},"שם מרצה חיצוני"),
+        h("input",{className:"inp",value:f.extLecName||"",onChange:e=>set("extLecName",e.target.value),placeholder:"שם המרצה החיצוני (אם רלוונטי)",style:{background:"#fff"}})),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:11}},
-        h("div",null,h("label",{style:L},"שעת התחלה"),h("select",{className:"inp",value:f.startH,onChange:e=>set("startH",+e.target.value)},hopts.slice(0,-1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho))))),
-        h("div",null,h("label",{style:L},"שעת סיום"),h("select",{className:"inp",value:f.endH,onChange:e=>set("endH",+e.target.value)},hopts.slice(1).map(ho=>h("option",{key:ho,value:ho},fmtH(ho)))))),
+        h("div",null,h("label",{style:L},"שעת התחלה"),h("select",{className:"inp",value:f.startH,onChange:e=>set("startH",+e.target.value)},hopts.slice(0,-1).map(ho=>h("option",{key:ho,value:ho},fmtH2(ho))))),
+        h("div",null,h("label",{style:L},"שעת סיום"),h("select",{className:"inp",value:f.endH,onChange:e=>set("endH",+e.target.value)},hopts.slice(1).map(ho=>h("option",{key:ho,value:ho},fmtH2(ho)))))),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:11}},
         h("div",null,h("label",{style:L},"שס"),h("input",{className:"inp",type:"number",step:".5",min:"0",value:f.ss,onChange:e=>{const v=+e.target.value||0;set("ss",v);set("sha",+(v/2).toFixed(4));}})),
         h("div",null,h("label",{style:L},"שש"),h("input",{className:"inp",type:"number",step:".25",min:"0",value:f.sha,onChange:e=>set("sha",+e.target.value||0)}))),
       h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:11}},h("input",{type:"checkbox",id:"zm",checked:!!f.zoom,onChange:e=>set("zoom",e.target.checked),style:{width:14,height:14}}),h("label",{htmlFor:"zm",style:{fontSize:12}},"זום / היברידי")),
-      h("div",{style:{marginBottom:11,background:"#F0F9FF",borderRadius:8,padding:"8px 10px",border:"1px solid #BAE6FD"}},
-        h("label",{style:{...L,color:"#0369A1"}},"מרצה חיצוני"),
-        h("input",{className:"inp",value:f.extLecName||"",onChange:e=>set("extLecName",e.target.value),placeholder:"שם המרצה החיצוני",style:{background:"#fff"}})),
       h("div",{style:{marginBottom:16}},h("label",{style:L},"הערות"),h("textarea",{className:"inp",value:f.notes,onChange:e=>set("notes",e.target.value),rows:2,style:{resize:"vertical"},placeholder:"הערות נוספות..."})),
       h("div",{style:{display:"flex",gap:8}},
-        h("button",{onClick:()=>{
-          const form={...f};
-          if(form.lec==="_ext_"){form.lec="";}
-          onSave(day,form);
-        },style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
+        h("button",{onClick:()=>onSave(day,f),style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
         cell&&h("button",{onClick:()=>onDelete(day,cell),style:{padding:"11px 16px",borderRadius:9,border:"1.5px solid #EF4444",background:"#FEF2F2",color:"#EF4444",fontSize:13,fontWeight:700}},"מחק"))));
 }
 
-// ══ Banner Modal ══
+// ══ BannerModal ══
 function BannerModal({yid,current,onSave,onClose}){
   const[txt,setTxt]=useState(current||"");
   return h("div",{style:{position:"relative",zIndex:50}},
     h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
     h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:22,width:420,maxWidth:"94vw",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
       h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},h("div",{style:{fontWeight:700,fontSize:14,color:"#1E3A8A"}},"הערה לפני הסמסטר"),h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
-      h("textarea",{className:"inp",value:txt,onChange:e=>setTxt(e.target.value),rows:3,style:{resize:"vertical",marginBottom:14},placeholder:"לדוגמה: לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל (1 שס)"}),
+      h("textarea",{className:"inp",value:txt,onChange:e=>setTxt(e.target.value),rows:3,style:{resize:"vertical",marginBottom:14},placeholder:"לדוגמה: לפני תחילת הסמסטר: הכרות עם עבודת הדיאטן — אביגיל"}),
       h("div",{style:{display:"flex",gap:8}},
         h("button",{onClick:()=>onSave(yid,txt),style:{flex:1,padding:"10px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#1E3A8A,#3B0764)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"),
         h("button",{onClick:()=>onSave(yid,""),style:{padding:"10px 14px",borderRadius:9,border:"1px solid #E5E7EB",background:"#fff",color:"#6B7280",fontSize:13}},"מחק"))));
 }
 
-// ══ Staff Colors Manager Modal ══
-function StaffColorsModal({staffColors,onSave,onClose}){
-  const[colors,setColors]=useState(JSON.parse(JSON.stringify(staffColors)));
-  const PRESET_COLORS=["#5B21B6","#0369A1","#166534","#92400E","#BE123C","#1E3A8A","#C2410C","#0F766E","#831843","#312E81","#065F46","#9A3412","#1D4ED8","#7C3AED"];
-  const PRESET_BGS=["#EDE9FE","#E0F2FE","#DCFCE7","#FEF3C7","#FFF1F2","#DBEAFE","#FFF7ED","#CCFBF1","#FDF2F8","#E0E7FF","#D1FAE5","#FFEDD5","#DBEAFE","#F5F3FF"];
-
-  const upColor=(key,field,val)=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[key])n[key]={c:"#374151",bg:"#F3F4F6",full:""};n[key][field]=val;return n;});
-  const addMember=()=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));const key="מרצה"+(Object.keys(n).length+1);n[key]={c:PRESET_COLORS[Object.keys(n).length%PRESET_COLORS.length],bg:PRESET_BGS[Object.keys(n).length%PRESET_BGS.length],full:""};return n;});
-  const delMember=(key)=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));delete n[key];return n;});
-  const renameKey=(oldKey,newKey)=>{if(!newKey||newKey===oldKey)return;setColors(prev=>{const n={};for(const[k,v]of Object.entries(prev))n[k===oldKey?newKey:k]=v;return n;});};
-
+// ══ StaffColorsModal ══
+function StaffColorsModal({sc,onSave,onClose}){
+  const[colors,setColors]=useState(JSON.parse(JSON.stringify(sc)));
+  const PRESET_C=["#5B21B6","#0369A1","#166534","#92400E","#BE123C","#1E3A8A","#C2410C","#0F766E","#831843","#312E81"];
+  const PRESET_BG=["#EDE9FE","#E0F2FE","#DCFCE7","#FEF3C7","#FFF1F2","#DBEAFE","#FFF7ED","#CCFBF1","#FDF2F8","#E0E7FF"];
+  const up=(key,field,val)=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[key])n[key]={c:"#374151",bg:"#F3F4F6",full:""};n[key][field]=val;return n;});
+  const add=()=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));const idx=Object.keys(n).length;n["מרצה"+(idx+1)]={c:PRESET_C[idx%PRESET_C.length],bg:PRESET_BG[idx%PRESET_BG.length],full:""};return n;});
+  const del=(key)=>setColors(prev=>{const n=JSON.parse(JSON.stringify(prev));delete n[key];return n;});
+  const rename=(oldK,newK)=>{if(!newK||newK===oldK)return;setColors(prev=>{const n={};for(const[k,v]of Object.entries(prev))n[k===oldK?newK:k]=v;return n;});};
   return h("div",{style:{position:"relative",zIndex:50}},
     h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
     h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:22,width:520,maxWidth:"96vw",maxHeight:"90vh",overflowY:"auto",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
-      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
-        h("div",{style:{fontWeight:700,fontSize:15,color:"#3B0764"}},"ניהול רשימת הסגל וצבעים"),
-        h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
-      h("div",{style:{fontSize:11,color:"#6B7280",marginBottom:12,background:"#F9FAFB",borderRadius:8,padding:"8px 12px"}},"שם קצר = מה שמוקלד בעריכת קורס. שם מלא = לתצוגה."),
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},h("div",{style:{fontWeight:700,fontSize:15,color:"#3B0764"}},"ניהול רשימת הסגל וצבעים"),h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
+      h("div",{style:{fontSize:11,color:"#6B7280",marginBottom:12,background:"#F9FAFB",borderRadius:8,padding:"8px 12px"}},"שם קצר = מה שמוקלד בעריכת קורס | שם מלא = לתצוגה"),
       h("div",{style:{display:"grid",gap:8,marginBottom:14}},
         Object.entries(colors).map(([key,v])=>h("div",{key,style:{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",background:v.bg,borderRadius:8,border:"2px solid "+v.c}},
           h("div",{style:{width:28,height:28,borderRadius:6,background:v.c,flexShrink:0,border:"2px solid rgba(0,0,0,0.1)"}}),
-          h("input",{type:"text",defaultValue:key,onBlur:e=>renameKey(key,e.target.value.trim()),placeholder:"שם קצר",style:{width:70,fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,padding:"3px 6px",background:"#fff",outline:"none"}}),
-          h("input",{type:"text",defaultValue:v.full||"",onBlur:e=>upColor(key,"full",e.target.value),placeholder:"שם מלא",style:{flex:1,fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,padding:"3px 6px",background:"#fff",outline:"none"}}),
-          h("input",{type:"color",value:v.c,onChange:e=>upColor(key,"c",e.target.value),style:{width:30,height:28,border:"none",cursor:"pointer",borderRadius:4,padding:0}}),
-          h("button",{onClick:()=>delMember(key),style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:16,padding:"0 4px",flexShrink:0}},"✕")))),
+          h("input",{type:"text",defaultValue:key,onBlur:e=>rename(key,e.target.value.trim()),placeholder:"שם קצר",style:{width:70,fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,padding:"3px 6px",background:"#fff",outline:"none"}}),
+          h("input",{type:"text",defaultValue:v.full||"",onBlur:e=>up(key,"full",e.target.value),placeholder:"שם מלא",style:{flex:1,fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,padding:"3px 6px",background:"#fff",outline:"none"}}),
+          h("input",{type:"color",value:v.c,onChange:e=>up(key,"c",e.target.value),style:{width:30,height:28,border:"none",cursor:"pointer",borderRadius:4,padding:0}}),
+          h("button",{onClick:()=>del(key),style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:16,padding:"0 4px",flexShrink:0}},"✕")))),
       h("div",{style:{display:"flex",gap:8}},
-        h("button",{onClick:addMember,style:{flex:1,padding:"9px",borderRadius:9,border:"1.5px dashed #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ הוסף איש סגל"),
-        h("button",{onClick:()=>onSave(colors),style:{flex:1,padding:"9px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}},"שמור"))));
+        h("button",{onClick:add,style:{flex:1,padding:"9px",borderRadius:9,border:"1.5px dashed #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:12,fontWeight:600}},"+ הוסף איש סגל"),
+        h("button",{onClick:()=>onSave(colors),style:{flex:1,padding:"9px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#4C1D95)",color:"#fff",fontSize:13,fontWeight:700}},"שמור"))));
 }
 
-// ══ Stats Panel ══
-function StatsPanel({staff,sched,staffColors,onUpdate}){
-  const lecSems=useMemo(()=>computeLecSemesters(sched),[sched]);
-  const lecSchedule=useMemo(()=>computeLecCourseSchedule(sched),[sched]);
-
-  const upField=(si,section,idx,field,val)=>{
-    const next=JSON.parse(JSON.stringify(staff));
-    next[si][section][idx][field]=field==="n"||field==="dept"||field==="sem"?val:(parseFloat(val)||0);
-    onUpdate(next);
-  };
-  const addRow=(si,section)=>{
-    const next=JSON.parse(JSON.stringify(staff));
-    if(section==="courses")next[si].courses.push({n:"קורס חדש",ss:2,sem:""});
-    else if(section==="ext")next[si].ext.push({n:"קורס חדש",dept:"",ss:2,sem:""});
-    else next[si].bonuses.push({n:"גמול תפקיד",ss:1});
-    onUpdate(next);
-  };
-  const delRow=(si,section,idx)=>{
-    const next=JSON.parse(JSON.stringify(staff));next[si][section].splice(idx,1);onUpdate(next);
-  };
+// ══ StatsPanel ══
+function StatsPanel({staff,sched,sc,onUpdate}){
+  const lecSchedule=useMemo(()=>computeLecSchedule(sched),[sched]);
+  const upField=(si,sec,idx,field,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si][sec][idx][field]=(field==="n"||field==="dept"||field==="sem"||field==="day"||field==="time")?val:(parseFloat(val)||0);onUpdate(next);};
+  const addRow=(si,sec)=>{const next=JSON.parse(JSON.stringify(staff));if(sec==="courses")next[si].courses.push({n:"קורס חדש",ss:2,sem:"",day:"",time:""});else if(sec==="ext")next[si].ext.push({n:"קורס חדש",dept:"",ss:2,sem:"",day:"",time:""});else next[si].bonuses.push({n:"גמול תפקיד",ss:1});onUpdate(next);};
+  const delRow=(si,sec,idx)=>{const next=JSON.parse(JSON.stringify(staff));next[si][sec].splice(idx,1);onUpdate(next);};
   const upNote=(si,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si].note=val;onUpdate(next);};
   const upName=(si,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si].name=val;onUpdate(next);};
-  const addStaff=()=>{
-    const next=JSON.parse(JSON.stringify(staff));
-    next.push({name:"מרצה חדש",note:"",courses:[{n:"קורס 1",ss:2,sem:""}],ext:[],bonuses:[]});
-    onUpdate(next);
-  };
-  const delStaff=(si)=>{
-    const nm=staff[si]?.name||"מרצה";
-    if(!window.confirm("למחוק את "+nm+"?"))return;
-    const next=JSON.parse(JSON.stringify(staff));next.splice(si,1);onUpdate(next);
-  };
-
+  const addStaff=()=>{const next=JSON.parse(JSON.stringify(staff));next.push({name:"מרצה חדש",note:"",courses:[{n:"קורס 1",ss:2,sem:"",day:"",time:""}],ext:[],bonuses:[]});onUpdate(next);};
+  const delStaff=(si)=>{const nm=staff[si]?.name||"מרצה";if(!window.confirm("למחוק את "+nm+"?"))return;const next=JSON.parse(JSON.stringify(staff));next.splice(si,1);onUpdate(next);};
   const calcTotal=(d)=>[...d.courses,...(d.ext||[]),...(d.bonuses||[])].reduce((a,c)=>a+(parseFloat(c.ss)||0),0);
-
   const niStyle=(clr)=>({width:50,padding:"2px 3px",borderRadius:4,border:"1px solid "+(clr||"#D1D5DB"),textAlign:"center",fontSize:11,background:"#F9FAFB",flexShrink:0,outline:"none"});
-  const semStyle={width:40,padding:"2px 3px",borderRadius:4,border:"1px solid #DDD6FE",textAlign:"center",fontSize:10,flexShrink:0,outline:"none",background:"#F5F3FF",color:"#5B21B6"};
+  const semStyle={width:42,padding:"2px 3px",borderRadius:4,border:"1px solid #DDD6FE",textAlign:"center",fontSize:10,flexShrink:0,outline:"none",background:"#F5F3FF",color:"#5B21B6"};
+  const fieldStyle={fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 3px",outline:"none",background:"#fff",flexShrink:0};
   const delBtn=(cb)=>h("button",{onClick:cb,style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:12,padding:"0 2px",flexShrink:0}},"✕");
   const addBtn=(lbl,cb)=>h("button",{onClick:cb,style:{background:"none",border:"1px dashed #D1D5DB",color:"#9CA3AF",cursor:"pointer",fontSize:10,padding:"2px 8px",borderRadius:4,marginTop:3,width:"100%"}},lbl);
 
   return h("div",{style:{padding:18}},
-    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
       h("div",{style:{fontWeight:700,fontSize:14,color:"#3B0764"}},"שעות סגל"),
       h("button",{onClick:addStaff,style:{padding:"5px 12px",borderRadius:8,border:"1.5px dashed #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:11,fontWeight:600}},"+ הוסף מרצה")),
-
-
     h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:10}},
       staff.map((d,si)=>{
-        const sc=staffColors||{};
-        const nameKey=d.name;
-        const l=sc[nameKey]?{c:sc[nameKey].c,bg:sc[nameKey].bg}:{c:"#374151",bg:"#F3F4F6"};
+        const nameKey=d.name;const l=sc&&sc[nameKey]?{c:sc[nameKey].c,bg:sc[nameKey].bg}:{c:"#374151",bg:"#F3F4F6"};
         const total=calcTotal(d);
-        // Get semesters this lecturer teaches (from sched)
-        const autoSems=lecSems[nameKey]||"";
-
+        const sortedCourses=[...d.courses.map((c,ci)=>({c,ci,sec:"courses"}))].sort((a,b)=>{
+          const sa=lecSchedule[nameKey]&&lecSchedule[nameKey][a.c.n];const sb2=lecSchedule[nameKey]&&lecSchedule[nameKey][b.c.n];
+          const semA=a.c.sem||(sa?sa.sem:"ב");const semB=b.c.sem||(sb2?sb2.sem:"ב");
+          if(semA!==semB)return semA==="א"?-1:1;
+          const dayA=a.c.day?getDayOrder(a.c.day):(sa?getDayOrder(sa.day):99);
+          const dayB=b.c.day?getDayOrder(b.c.day):(sb2?getDayOrder(sb2.day):99);
+          if(dayA!==dayB)return dayA-dayB;
+          const hA=sa?sa.startH:99;const hB=sb2?sb2.startH:99;return hA-hB;
+        });
+        const sortedExt=[...(d.ext||[]).map((c,ei)=>({c,ei}))].sort((a,b)=>{
+          const semA=a.c.sem||"ב";const semB=b.c.sem||"ב";
+          if(semA!==semB)return semA==="א"?-1:1;
+          return getDayOrder(a.c.day||"")-getDayOrder(b.c.day||"");
+        });
         return h("div",{key:si,style:{background:"#fff",borderRadius:12,padding:13,borderRight:"4px solid "+l.c,border:"1px solid "+l.c+"20",borderRightWidth:4}},
-          // Header
           h("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:9}},
             h("div",{style:{width:12,height:12,borderRadius:"50%",background:l.c,flexShrink:0}}),
             h("input",{type:"text",defaultValue:d.name,onBlur:e=>upName(si,e.target.value.trim()),style:{fontWeight:700,fontSize:13,color:l.c,border:"none",background:"transparent",flex:1,outline:"none"}}),
             h("input",{type:"text",defaultValue:d.note||"",onBlur:e=>upNote(si,e.target.value),placeholder:"תווית",style:{fontSize:9,color:"#B45309",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:99,padding:"1px 6px",width:70,outline:"none"}}),
-            h("button",{onClick:()=>delStaff(si),title:"מחק מרצה",style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:16,padding:"0",flexShrink:0}},"×")),
-          // Totals + auto sems
+            h("button",{onClick:()=>delStaff(si),style:{background:"none",border:"none",color:"#EF4444",cursor:"pointer",fontSize:16,padding:"0",flexShrink:0}},"×")),
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:9}},
             h("div",{style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},total.toFixed(2)),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},"שס")),
             h("div",{style:{background:l.bg,borderRadius:7,padding:"6px",textAlign:"center"}},h("div",{style:{fontSize:16,fontWeight:800,color:l.c}},(total/2).toFixed(2)),h("div",{style:{fontSize:9,color:l.c,opacity:.7}},"שש"))),
-          // Courses - sorted chronologically
           h("div",{style:{fontSize:10,marginBottom:5}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:2}},"קורסי מחלקה"),
-            [...d.courses.map((c,ci)=>({c,ci}))].sort((a,b)=>{
-              const sa=lecSchedule[nameKey]&&lecSchedule[nameKey][a.c.n];
-              const sb2=lecSchedule[nameKey]&&lecSchedule[nameKey][b.c.n];
-              const semA=a.c.sem||(sa?sa.sem:"ב");const semB=b.c.sem||(sb2?sb2.sem:"ב");
-              if(semA!==semB)return semA==="א"?-1:1;
-              const dayA=sa?getDayOrder(sa.day):99;const dayB=sb2?getDayOrder(sb2.day):99;
-              if(dayA!==dayB)return dayA-dayB;
-              const hA=sa?sa.startH:99;const hB=sb2?sb2.startH:99;
-              return hA-hB;
-            }).map(({c,ci})=>{
-              // Exact match only
-              const lecMap=lecSchedule[nameKey]||{};
-              let schedInfo=lecMap[c.n];
-              const autoSem=schedInfo?schedInfo.sem:"";
-              const dayStr=schedInfo?schedInfo.day:"";
-              const timeStr=schedInfo?fmtH(schedInfo.startH)+"-"+fmtH(schedInfo.endH):"";
+            sortedCourses.map(({c,ci})=>{
+              const si2=lecSchedule[nameKey]&&lecSchedule[nameKey][c.n];
+              const autoSem=si2?si2.sem:"";const autoDay=si2?si2.day:"";const autoTime=si2?fmtH(si2.startH)+"-"+fmtH(si2.endH):"";
               return h("div",{key:ci,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2}},
                 h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-                h("select",{value:c.sem||autoSem||"",onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:{...semStyle,background:autoSem&&!c.sem?"#EDE9FE":"#F5F3FF",color:"#5B21B6",border:"1px solid #DDD6FE",cursor:"pointer"}},
+                h("select",{value:c.sem||autoSem||"",onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:{...semStyle}},
                   h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
-                h("input",{type:"text",defaultValue:c.day||dayStr||"",onBlur:e=>upField(si,"courses",ci,"day",e.target.value),placeholder:"יום",style:{width:36,fontSize:9,border:"1px solid #DDD6FE",borderRadius:4,padding:"2px 3px",outline:"none",background:"#fff",color:"#374151"}}),
-                h("input",{type:"text",defaultValue:c.time||(schedInfo?fmtH(schedInfo.startH)+"-"+fmtH(schedInfo.endH):""),onBlur:e=>upField(si,"courses",ci,"time",e.target.value),placeholder:"שעות",style:{width:60,fontSize:9,border:"1px solid #DDD6FE",borderRadius:4,padding:"2px 3px",outline:"none",background:"#fff",color:"#374151"}}),
+                h("input",{type:"text",defaultValue:c.day||autoDay||"",onBlur:e=>upField(si,"courses",ci,"day",e.target.value),placeholder:"יום",style:{...fieldStyle,width:36}}),
+                h("input",{type:"text",defaultValue:c.time||autoTime||"",onBlur:e=>upField(si,"courses",ci,"time",e.target.value),placeholder:"שעות",style:{...fieldStyle,width:58}}),
                 h("input",{type:"number",step:".5",min:"0",defaultValue:c.ss,onBlur:e=>upField(si,"courses",ci,"ss",e.target.value),style:niStyle(l.c)}),
                 h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
                 delBtn(()=>delRow(si,"courses",ci)));
             }),
             addBtn("+ קורס פנימי",()=>addRow(si,"courses"))),
-          // External - sorted
           h("div",{style:{fontSize:10,marginBottom:5}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:2}},"קורסים חיצוניים"),
-            [...(d.ext||[]).map((c,ei)=>({c,ei}))].sort((a,b)=>{
-              const semA=a.c.sem||"ב";const semB=b.c.sem||"ב";
-              if(semA!==semB)return semA==="א"?-1:1;
-              const dayA=getDayOrder(a.c.day||"");const dayB=getDayOrder(b.c.day||"");
-              if(dayA!==dayB)return dayA-dayB;
-              return (a.c.startH||0)-(b.c.startH||0);
-            }).map(({c,ei})=>h("div",{key:ei,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2}},
+            sortedExt.map(({c,ei})=>h("div",{key:ei,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:2,marginBottom:2}},
               h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
-              h("input",{type:"text",defaultValue:c.dept||"",onBlur:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{width:45,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 4px",outline:"none",background:"#fff"}}),
+              h("input",{type:"text",defaultValue:c.dept||"",onBlur:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{...fieldStyle,width:45}}),
               h("select",{value:c.sem||"",onChange:e=>upField(si,"ext",ei,"sem",e.target.value),style:{...semStyle,background:"#FFF7ED",color:"#92400E",border:"1px solid #FED7AA"}},
                 h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
-              h("input",{type:"text",defaultValue:c.day||"",onBlur:e=>upField(si,"ext",ei,"day",e.target.value),placeholder:"יום",style:{width:38,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 3px",outline:"none",background:"#fff"}}),
-              h("input",{type:"text",defaultValue:c.time||"",onBlur:e=>upField(si,"ext",ei,"time",e.target.value),placeholder:"שעות",style:{width:55,fontSize:9,border:"1px solid #E5E7EB",borderRadius:4,padding:"2px 3px",outline:"none",background:"#fff"}}),
+              h("input",{type:"text",defaultValue:c.day||"",onBlur:e=>upField(si,"ext",ei,"day",e.target.value),placeholder:"יום",style:{...fieldStyle,width:36}}),
+              h("input",{type:"text",defaultValue:c.time||"",onBlur:e=>upField(si,"ext",ei,"time",e.target.value),placeholder:"שעות",style:{...fieldStyle,width:58}}),
               h("input",{type:"number",step:".5",min:"0",defaultValue:c.ss,onBlur:e=>upField(si,"ext",ei,"ss",e.target.value),style:niStyle("#9CA3AF")}),
               h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
               delBtn(()=>delRow(si,"ext",ei)))),
             addBtn("+ קורס חיצוני",()=>addRow(si,"ext"))),
-          // Bonuses
           h("div",{style:{background:"#FFF7ED",borderRadius:6,padding:"6px 8px",border:"1px solid #FED7AA"}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#92400E",marginBottom:2}},"גמולי תפקיד"),
             (d.bonuses||[]).map((b,bi)=>h("div",{key:bi,style:{display:"flex",alignItems:"center",gap:3,marginBottom:2}},
@@ -434,35 +309,30 @@ function StatsPanel({staff,sched,staffColors,onUpdate}){
       })));
 }
 
-// ══ Conflicts ══
+// ══ ConflictsPanel ══
 function ConflictsPanel({cfls}){
   if(!cfls.length)return h("div",{style:{padding:18}},h("div",{style:{background:"#F0FDF4",border:"1.5px solid #86EFAC",borderRadius:12,padding:16}},h("div",{style:{fontWeight:700,color:"#166534",fontSize:13}},"אין חפיפות - המערכת תקינה")));
-  return h("div",{style:{padding:18}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:14,marginBottom:12}},"חפיפות ("+cfls.length+")"),cfls.map((cf,i)=>{return h("div",{key:i,style:{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:11,padding:12,marginBottom:9}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:12,marginBottom:6}},"חפיפה - "+cf.lec+" - "+cf.day),h("div",{style:{display:"flex",flexWrap:"wrap",gap:5}},cf.slots.map((sl,j)=>{const tl=YTABS.find(t=>t.id===sl.yid);return h("span",{key:j,style:{background:"#fff",border:"1px solid #FCA5A5",borderRadius:999,padding:"2px 8px",fontSize:10,color:"#7F1D1D"}},(tl?tl.lbl:sl.yid)+": "+sl.course);})));})
+  return h("div",{style:{padding:18}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:14,marginBottom:12}},"חפיפות ("+cfls.length+")"),cfls.map((cf,i)=>{const l=getStaffColor(cf.lec,{});return h("div",{key:i,style:{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:11,padding:12,marginBottom:9}},h("div",{style:{fontWeight:700,color:"#991B1B",fontSize:12,marginBottom:6}},"חפיפה — "+cf.lec+" — "+cf.day),h("div",{style:{display:"flex",flexWrap:"wrap",gap:5}},cf.slots.map((sl,j)=>{const tl=YTABS.find(t=>t.id===sl.yid);return h("span",{key:j,style:{background:"#fff",border:"1px solid #FCA5A5",borderRadius:999,padding:"2px 8px",fontSize:10,color:"#7F1D1D"}},(tl?tl.lbl:sl.yid)+": "+sl.course);})));})
   );
 }
 
-// ══ Backup Modal ══
-function BackupModal({acY,sched,staff,banners,staffColors,onRestore,onClose}){
+// ══ BackupModal ══
+function BackupModal({acY,sched,staff,banners,sc,zoomDays,onRestore,onClose}){
   const[msg,setMsg]=useState("");
   const doExport=()=>{
     const yk=getYK(acY);
-    const bk={year:acY,yearKey:yk,date:new Date().toISOString(),sched,staff,banners,staffColors};
+    const bk={year:acY,yearKey:yk,date:new Date().toISOString(),sched,staff,banners,staffColors:sc,zoomDays};
     const blob=new Blob([JSON.stringify(bk,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download="backup_"+yk+"_"+new Date().toLocaleDateString("he-IL").replace(/\//g,"-")+".json";
     a.click();URL.revokeObjectURL(url);setMsg("הגיבוי הורד!");
   };
-  const doImport=(e)=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.sched&&!d.staff)throw new Error("קובץ לא תקין");onRestore(d);setMsg("השחזור הצליח!");}catch(err){setMsg("שגיאה: "+err.message);}};
-    reader.readAsText(file);
-  };
+  const doImport=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.sched&&!d.staff)throw new Error("קובץ לא תקין");onRestore(d);setMsg("השחזור הצליח!");}catch(err){setMsg("שגיאה: "+err.message);}};reader.readAsText(file);};
   return h("div",{style:{position:"relative",zIndex:50}},
     h("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)"},onClick:onClose}),
     h("div",{style:{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:16,padding:24,width:360,maxWidth:"94vw",zIndex:51,direction:"rtl",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
       h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},h("div",{style:{fontWeight:700,fontSize:15,color:"#3B0764"}},"גיבוי ושחזור"),h("button",{onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#9CA3AF"}},"✕")),
-      h("div",{style:{fontSize:11,color:"#6B7280",marginBottom:14,background:"#F9FAFB",borderRadius:8,padding:"8px 12px",lineHeight:1.7}},"לפני כל עדכון קובץ — גבי! אם משהו השתבש — שחזרי מהקובץ."),
+      h("div",{style:{fontSize:11,color:"#6B7280",marginBottom:14,background:"#F9FAFB",borderRadius:8,padding:"8px 12px",lineHeight:1.7}},"לפני כל עדכון קובץ — גבי!"),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
         h("button",{onClick:doExport,style:{padding:"14px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#059669,#065F46)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"center"}},h("div",{style:{fontSize:20,marginBottom:4}},"⬇️"),h("div",null,"גיבוי")),
         h("label",{style:{padding:"14px",borderRadius:10,border:"2px dashed #7C3AED",background:"#F5F3FF",color:"#5B21B6",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"center",display:"block"}},h("div",{style:{fontSize:20,marginBottom:4}},"⬆️"),h("div",null,"שחזור"),h("input",{type:"file",accept:".json",onChange:doImport,style:{display:"none"}}))),
@@ -485,11 +355,13 @@ function Login({onLogin}){
 
 // ══ App ══
 function App(){
+  const fresh=()=>JSON.parse(JSON.stringify(DEFAULT_SCHED));
   const[user,sUser]=useState(null);
-  const[sched,setSched]=useState(DEFAULT_SCHED);
-  const[staff,setStaff]=useState(DEFAULT_STAFF);
-  const[banners,setBanners]=useState(DEFAULT_BANNERS);
-  const[staffColors,setStaffColors]=useState(DEFAULT_STAFF_COLORS);
+  const[sched,setSched]=useState(fresh);
+  const[staff,setStaff]=useState(()=>JSON.parse(JSON.stringify(DEFAULT_STAFF)));
+  const[banners,setBanners]=useState(()=>JSON.parse(JSON.stringify(DEFAULT_BANNERS)));
+  const[sc,setSc]=useState(()=>JSON.parse(JSON.stringify(DEFAULT_STAFF_COLORS)));
+  const[zoomDays,setZoomDays]=useState({});
   const[dbSt,setDbSt]=useState("loading");
   const[ay,sAy]=useState("y1a");
   const[view,sView]=useState("schedule");
@@ -498,22 +370,19 @@ function App(){
   const[bannerModal,setBannerModal]=useState(null);
   const[colorsModal,setColorsModal]=useState(false);
   const[backupOpen,setBackup]=useState(false);
-  const[zoomDays,setZoomDays]=useState({});
   const[saving,setSaving]=useState(false);
   const[pdfOpen,setPdf]=useState(false);
-  const schedTimer=useRef(null);
-  const staffTimer=useRef(null);
+  const schedTimer=useRef(null);const staffTimer=useRef(null);
 
   useEffect(()=>{
     setDbSt("loading");
     const yk=getYK(acY);
-    Promise.all([dbLoad("sched_"+yk),dbLoad("staff_"+yk),dbLoad("banners_"+yk),dbLoad("staffcolors_"+yk),dbLoad("zoom_"+yk)]).then(([sc,st,bn,scl,zm])=>{
-      // Init zoom from YTABS defaults
-      const defaultZoom={};YTABS.forEach(t=>{if(t.zD&&t.zD.length)defaultZoom[t.id]=[...t.zD];});
-      if(sc)setSched(sc);
+    const defaultZoom={};YTABS.forEach(t=>{if(t.zD&&t.zD.length)defaultZoom[t.id]=[...t.zD];});
+    Promise.all([dbLoad("sched_"+yk),dbLoad("staff_"+yk),dbLoad("banners_"+yk),dbLoad("staffcolors_"+yk),dbLoad("zoom_"+yk)]).then(([sc2,st,bn,scl,zm])=>{
+      if(sc2)setSched(sc2);else setSched(fresh());
       if(st)setStaff(st);
       if(bn)setBanners(bn);
-      if(scl)setStaffColors(scl);
+      if(scl)setSc(scl);
       setZoomDays(zm||defaultZoom);
       setDbSt("ok");
     }).catch(()=>setDbSt("error"));
@@ -524,80 +393,39 @@ function App(){
   useEffect(()=>{const yk=getYK(acY);const ch=dbSub("banners_"+yk,nd=>setBanners(nd));return()=>sb.removeChannel(ch);},[acY]);
   useEffect(()=>{const yk=getYK(acY);const ch=dbSub("zoom_"+yk,nd=>setZoomDays(nd));return()=>sb.removeChannel(ch);},[acY]);
 
-  const saveSchedDB=useCallback((nd)=>{
-    clearTimeout(schedTimer.current);setSaving(true);
-    schedTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("sched_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");if(!ok)console.error("Failed to save sched");},700);
-  },[acY]);
+  const saveSchedDB=useCallback((nd)=>{clearTimeout(schedTimer.current);setSaving(true);schedTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("sched_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},700);},[acY]);
+  const saveStaffDB=useCallback((nd)=>{clearTimeout(staffTimer.current);setSaving(true);staffTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("staff_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},700);},[acY]);
+  const saveBannersDB=useCallback((nd)=>{const yk=getYK(acY);dbSave("banners_"+yk,nd);},[acY]);
+  const saveScDB=useCallback((nd)=>{const yk=getYK(acY);dbSave("staffcolors_"+yk,nd);},[acY]);
+  const saveZoomDB=useCallback((nd)=>{const yk=getYK(acY);dbSave("zoom_"+yk,nd);},[acY]);
 
-  const saveStaffDB=useCallback((nd)=>{
-    clearTimeout(staffTimer.current);setSaving(true);
-    staffTimer.current=setTimeout(async()=>{const yk=getYK(acY);const ok=await dbSave("staff_"+yk,nd);setSaving(false);setDbSt(ok?"ok":"error");},700);
-  },[acY]);
-
-  const saveBannersDB=useCallback((nd)=>{
-    const yk=getYK(acY);dbSave("banners_"+yk,nd);
-  },[acY]);
-
-  const saveColorsDB=useCallback((nd)=>{
-    const yk=getYK(acY);dbSave("staffcolors_"+yk,nd);
-  },[acY]);
-
-  const cfls=useMemo(()=>getConflicts(sched,staffColors),[sched,staffColors]);
+  const cfls=useMemo(()=>getConflicts(sched,sc),[sched,sc]);
   const cSet=useMemo(()=>{const s=new Set();cfls.forEach(c=>c.slots.forEach(sl=>s.add(c.sem+"|"+c.lec+"|"+c.day+"|"+sl.startH)));return s;},[cfls]);
   const cYids=useMemo(()=>{const s=new Set();cfls.forEach(c=>c.slots.forEach(sl=>s.add(sl.yid)));return s;},[cfls]);
 
-  const handleSave=useCallback((day,form)=>{
-    setSched(prev=>{const yd=Object.assign({},prev[ay]);const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});
-    sModal(null);
-  },[ay,modal,saveSchedDB]);
-
-  const handleDelete=useCallback((day,cell)=>{
-    setSched(prev=>{const yd=Object.assign({},prev[ay]);yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});
-    sModal(null);
-  },[ay,saveSchedDB]);
-
+  const handleSave=useCallback((day,form)=>{setSched(prev=>{const yd=Object.assign({},prev[ay]);const ex=(yd[day]||[]).filter(c=>c!==modal.cell);ex.push(form);ex.sort((a,b)=>a.startH-b.startH);yd[day]=ex;const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});sModal(null);},[ay,modal,saveSchedDB]);
+  const handleDelete=useCallback((day,cell)=>{setSched(prev=>{const yd=Object.assign({},prev[ay]);yd[day]=(yd[day]||[]).filter(c=>c!==cell);const next=Object.assign({},prev,{[ay]:yd});saveSchedDB(next);return next;});sModal(null);},[ay,saveSchedDB]);
   const handleStaffUpdate=useCallback((next)=>{setStaff(next);saveStaffDB(next);},[saveStaffDB]);
   const handleBannerSave=useCallback((yid,txt)=>{setBanners(prev=>{const next=Object.assign({},prev,{[yid]:txt});saveBannersDB(next);return next;});setBannerModal(null);},[saveBannersDB]);
-  const handleColorsSave=useCallback((newColors)=>{setStaffColors(newColors);saveColorsDB(newColors);setColorsModal(false);},[saveColorsDB]);
-  const handleRestore=useCallback((data)=>{
-    const yk=getYK(acY);
-    if(data.sched){setSched(data.sched);dbSave("sched_"+yk,data.sched);}
-    if(data.staff){setStaff(data.staff);dbSave("staff_"+yk,data.staff);}
-    if(data.banners){setBanners(data.banners);dbSave("banners_"+yk,data.banners);}
-    if(data.staffColors){setStaffColors(data.staffColors);dbSave("staffcolors_"+yk,data.staffColors);}
-    setBackup(false);
-  },[acY]);
-
-  const handleToggleZoom=useCallback((yid,day)=>{
-    setZoomDays(prev=>{
-      const next={...prev};
-      const current=next[yid]||(YTABS.find(t=>t.id===yid)?.zD||[]);
-      if(current.includes(day)){next[yid]=current.filter(d=>d!==day);}
-      else{next[yid]=[...current,day];}
-      const yk=getYK(acY);dbSave("zoom_"+yk,next);
-      return next;
-    });
-  },[acY]);
+  const handleScSave=useCallback((newSc)=>{setSc(newSc);saveScDB(newSc);setColorsModal(false);},[saveScDB]);
+  const handleToggleZoom=useCallback((yid,day)=>{setZoomDays(prev=>{const cur=(prev[yid])||(YTABS.find(t=>t.id===yid)?.zD||[]);const next={...prev,[yid]:cur.includes(day)?cur.filter(d=>d!==day):[...cur,day]};saveZoomDB(next);return next;});},[saveZoomDB]);
+  const handleRestore=useCallback((data)=>{const yk=getYK(acY);if(data.sched){setSched(data.sched);dbSave("sched_"+yk,data.sched);}if(data.staff){setStaff(data.staff);dbSave("staff_"+yk,data.staff);}if(data.banners){setBanners(data.banners);dbSave("banners_"+yk,data.banners);}if(data.staffColors){setSc(data.staffColors);dbSave("staffcolors_"+yk,data.staffColors);}if(data.zoomDays){setZoomDays(data.zoomDays);dbSave("zoom_"+yk,data.zoomDays);}setBackup(false);},[acY]);
 
   if(!user)return h(Login,{onLogin:sUser});
 
   const bsc=YTABS.filter(t=>t.deg==="תואר ראשון"),msc=YTABS.filter(t=>t.deg==="תואר שני");
   const curTab=YTABS.find(t=>t.id===ay);
-  const pdfItems=[{label:"שנתון נוכחי - "+(curTab?curTab.lbl:""),fn:()=>exportPDF(ay,sched,banners,staffColors,curTab?curTab.lbl:"",acY)},{label:"תואר ראשון",fn:null},...bsc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,staffColors,t.lbl,acY)})),{label:"תואר שני",fn:null},...msc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,staffColors,t.lbl,acY)}))];
+  const pdfItems=[{label:"שנתון נוכחי - "+(curTab?curTab.lbl:""),fn:()=>exportPDF(ay,sched,banners,sc,curTab?curTab.lbl:"",acY)},{label:"תואר ראשון",fn:null},...bsc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,sc,t.lbl,acY)})),{label:"תואר שני",fn:null},...msc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,sc,t.lbl,acY)}))];
   const dot=h("span",{style:{width:8,height:8,borderRadius:"50%",display:"inline-block",background:saving?"#FCD34D":dbSt==="ok"?"#34D399":"#F87171",marginLeft:4}});
 
   return h("div",{style:{minHeight:"100vh",background:"#F0EDFF"}},
     h("div",{style:{background:"linear-gradient(120deg,#2d0a5c,#4C1D95,#5B21B6)",padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",height:50}},
       h("div",{style:{display:"flex",alignItems:"center",gap:10}},h("span",{style:{fontSize:20}},"📅"),h("div",null,h("div",{style:{display:"flex",alignItems:"center",gap:8}},h("span",{style:{color:"#fff",fontWeight:700,fontSize:14}},"מערכת ניהול שעות"),h("select",{value:acY,onChange:e=>sAcY(e.target.value),style:{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:99,color:"#E9D5FF",fontSize:11,fontWeight:600,padding:"2px 8px",outline:"none"}},AYS.map(y=>h("option",{key:y,value:y,style:{background:"#3B0764",color:"#fff"}},y)))),h("div",{style:{color:"rgba(255,255,255,0.45)",fontSize:10}},"המחלקה למדעי התזונה - אוניברסיטת אריאל"))),
-      h("div",{style:{display:"flex",alignItems:"center",gap:8}},
-        h("div",{style:{display:"flex",alignItems:"center",fontSize:10,color:"rgba(255,255,255,0.6)"}},dot,saving?"שומר...":dbSt==="ok"?"מסונכרן":"שגיאה"),
-        cfls.length>0&&h("button",{onClick:()=>sView("conflicts"),style:{background:"#EF4444",border:"none",borderRadius:99,padding:"3px 9px",color:"#fff",fontSize:11,fontWeight:700}},"⚠ "+cfls.length),
-        h("span",{style:{color:"rgba(255,255,255,0.5)",fontSize:10}},user.split("@")[0]),
-        h("button",{onClick:()=>sUser(null),style:{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:7,padding:"3px 9px",fontSize:11}},"יציאה"))),
+      h("div",{style:{display:"flex",alignItems:"center",gap:8}},h("div",{style:{display:"flex",alignItems:"center",fontSize:10,color:"rgba(255,255,255,0.6)"}},dot,saving?"שומר...":dbSt==="ok"?"מסונכרן":"שגיאה"),cfls.length>0&&h("button",{onClick:()=>sView("conflicts"),style:{background:"#EF4444",border:"none",borderRadius:99,padding:"3px 9px",color:"#fff",fontSize:11,fontWeight:700}},"⚠ "+cfls.length),h("span",{style:{color:"rgba(255,255,255,0.5)",fontSize:10}},user.split("@")[0]),h("button",{onClick:()=>sUser(null),style:{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:7,padding:"3px 9px",fontSize:11}},"יציאה"))),
     h("div",{style:{background:"#fff",borderBottom:"1.5px solid #EDE9FE",overflowX:"auto"}},
       h("div",{style:{display:"flex",alignItems:"stretch",padding:"0 10px",minWidth:"max-content"}},
         h("span",{style:{alignSelf:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,padding:"0 8px 0 2px",whiteSpace:"nowrap"}},"תואר ראשון"),
-        bsc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",position:"relative",color:active?"#5B21B6":t.fut?"#9CA3AF":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,cYids.has(t.id)?" ⚠":"");}),
+        bsc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",color:active?"#5B21B6":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,cYids.has(t.id)?" ⚠":"");}),
         h("div",{style:{width:1,background:"#EDE9FE",margin:"7px 8px"}}),
         h("span",{style:{alignSelf:"center",fontSize:10,color:"#9CA3AF",fontWeight:600,padding:"0 2px",whiteSpace:"nowrap"}},"תואר שני"),
         msc.map(t=>{const active=ay===t.id&&view==="schedule";return h("button",{key:t.id,onClick:()=>{sAy(t.id);sView("schedule");},style:{padding:"9px 9px",border:"none",background:"none",fontSize:11,fontWeight:600,whiteSpace:"nowrap",color:active?"#5B21B6":"#6B7280",borderBottom:active?"2px solid #5B21B6":"2px solid transparent",cursor:"pointer"}},t.s,cYids.has(t.id)?" ⚠":"");}))),
@@ -613,16 +441,16 @@ function App(){
             pdfItems.map((item,i)=>item.fn?h("button",{key:i,onClick:()=>{item.fn();setPdf(false);},style:{width:"100%",padding:"9px 14px",border:"none",background:"none",textAlign:"right",fontSize:11,color:"#374151",cursor:"pointer",borderBottom:"1px solid #F3F4F6",fontFamily:"inherit"},onMouseEnter:e=>e.currentTarget.style.background="#F5F3FF",onMouseLeave:e=>e.currentTarget.style.background="none"},item.label):h("div",{key:i,style:{padding:"5px 14px",fontSize:10,color:"#9CA3AF",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",fontWeight:600}},item.label))))),
       view==="schedule"&&h("div",{style:{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:10,border:"0.5px solid #EDE9FE",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}},
         h("span",{style:{fontSize:10,color:"#9CA3AF",fontWeight:600}},"סגל:"),
-        Object.entries(staffColors).map(([n,v])=>h("span",{key:n,style:{background:v.bg,color:v.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+v.c+"25"}},v.full||n))),
+        Object.entries(sc).map(([n,v])=>h("span",{key:n,style:{background:v.bg,color:v.c,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,border:"1px solid "+v.c+"25"}},v.full||n))),
       h("div",{style:{background:"#fff",borderRadius:13,border:"0.5px solid #EDE9FE",overflow:"hidden"}},
-        view==="schedule"&&h(Grid,{yid:ay,sched,banners,staffColors,zoomDays,cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c}),onBannerEdit:(yid,cur)=>setBannerModal({yid,cur}),onToggleZoom:handleToggleZoom}),
-        view==="stats"&&h(StatsPanel,{staff,sched,staffColors,onUpdate:handleStaffUpdate}),
+        view==="schedule"&&h(Grid,{yid:ay,sched,banners,sc,zoomDays,cSet,onEdit:(d,sH,c)=>sModal({day:d,startH:sH,cell:c}),onBannerEdit:(yid,cur)=>setBannerModal({yid,cur}),onToggleZoom:handleToggleZoom}),
+        view==="stats"&&h(StatsPanel,{staff,sched,sc,onUpdate:handleStaffUpdate}),
         view==="conflicts"&&h(ConflictsPanel,{cfls}))),
     pdfOpen&&h("div",{style:{position:"fixed",inset:0,zIndex:99},onClick:()=>setPdf(false)}),
-    modal&&h(EditModal,{day:modal.day,startH:modal.startH,cell:modal.cell,yid:ay,staffColors,onSave:handleSave,onDelete:handleDelete,onClose:()=>sModal(null)}),
+    modal&&h(EditModal,{day:modal.day,startH:modal.startH,cell:modal.cell,yid:ay,sc,onSave:handleSave,onDelete:handleDelete,onClose:()=>sModal(null)}),
     bannerModal&&h(BannerModal,{yid:bannerModal.yid,current:bannerModal.cur,onSave:handleBannerSave,onClose:()=>setBannerModal(null)}),
-    colorsModal&&h(StaffColorsModal,{staffColors,onSave:handleColorsSave,onClose:()=>setColorsModal(false)}),
-    backupOpen&&h(BackupModal,{acY,sched,staff,banners,staffColors,onRestore:handleRestore,onClose:()=>setBackup(false)}));
+    colorsModal&&h(StaffColorsModal,{sc,onSave:handleScSave,onClose:()=>setColorsModal(false)}),
+    backupOpen&&h(BackupModal,{acY,sched,staff,banners,sc,zoomDays,onRestore:handleRestore,onClose:()=>setBackup(false)}));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App,null));
