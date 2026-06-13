@@ -50,8 +50,8 @@ const YTABS=[
   {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"שנה ב סמ א",fut:false,zD:[],sem:"א"},
   {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"שנה ב סמ ב",fut:false,zD:[],sem:"ב"},
 ];
-const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו","תשצ״ז","תשצ״ח","תשצ״ט","תש״ק","תת״א","תת״ב","תת״ג","תת״ד","תת״ה","תת״ו"];
-const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv","tshtzz","tshtzch","tshtzt","tshk","tta","ttb","ttg","ttd","tte","ttv"];
+const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו"];
+const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv"];
 function getYK(y){const i=AYS.findIndex(a=>a===y);return i>=0?AYS_KEYS[i]:"tshpz";}
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
 
@@ -92,7 +92,7 @@ function exportPDF(yid,sched,banners,sc,zoomDays,label,acY){
   win.document.close();
 }
 
-// PDF per lecturer — from staff card data
+// PDF per lecturer — from staff card data only
 function exportLecturerPDF(lecName,staffData,sc,acY){
   const _sc=sc||{};
   const d=staffData.find(s=>s.name===lecName);
@@ -104,29 +104,32 @@ function exportLecturerPDF(lecName,staffData,sc,acY){
   const rowStyle='border:1px solid #E5E7EB;padding:6px 8px;font-size:11px;';
   const hStyle='background:'+color.bg+';color:'+color.c+';border:1px solid '+color.c+'30;padding:6px 8px;font-size:11px;font-weight:700;';
 
-  // Internal courses table
-  let internalRows=d.courses.map(c=>{
-    return '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>';
-  }).join("");
+  let internalRows=d.courses.map(c=>
+    '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>'
+  ).join("");
 
-  // External courses table
-  let extRows=(d.ext||[]).map(c=>{
-    return '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'">'+( c.dept||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>';
-  }).join("");
+  let extRows=(d.ext||[]).map(c=>
+    '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'">'+( c.dept||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>'
+  ).join("");
 
-  // Bonuses
-  let bonusRows=(d.bonuses||[]).map(b=>{
-    return '<tr><td style="'+rowStyle+'font-weight:600;color:#92400E" colspan="4">'+b.n+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:#92400E">'+( parseFloat(b.ss)||0).toFixed(1)+'</td></tr>';
-  }).join("");
+  let bonusRows=(d.bonuses||[]).map(b=>
+    '<tr><td style="'+rowStyle+'font-weight:600;color:#92400E" colspan="4">'+b.n+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:#92400E">'+( parseFloat(b.ss)||0).toFixed(1)+'</td></tr>'
+  ).join("");
 
-  const internalSection=d.courses.length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px">קורסי מחלקה</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:40%">קורס</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:15%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+internalRows+'</tbody></table>':"";
+  const internalSection=d.courses.length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px;border-bottom:1px solid #F3F4F6;padding-bottom:4px">קורסי מחלקה</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:38%">קורס</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:14%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+internalRows+'</tbody></table>':"";
 
-  const extSection=(d.ext||[]).length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px">קורסים חיצוניים</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:30%">קורס</th><th style="'+hStyle+'text-align:right;width:15%">חוג</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:15%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+extRows+'</tbody></table>':"";
+  const extSection=(d.ext||[]).length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px;border-bottom:1px solid #F3F4F6;padding-bottom:4px">קורסים חיצוניים</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:28%">קורס</th><th style="'+hStyle+'text-align:right;width:14%">חוג</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:14%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+extRows+'</tbody></table>':"";
 
-  const bonusSection=(d.bonuses||[]).length?'<h3 style="font-size:12px;color:#92400E;margin:14px 0 6px">גמולי תפקיד</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:right" colspan="4">גמול</th><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:center">שס</th></tr></thead><tbody>'+bonusRows+'</tbody></table>':"";
+  const bonusSection=(d.bonuses||[]).length?'<h3 style="font-size:12px;color:#92400E;margin:14px 0 6px;border-bottom:1px solid #FED7AA;padding-bottom:4px">גמולי תפקיד</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:right" colspan="4">גמול</th><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:center">שס</th></tr></thead><tbody>'+bonusRows+'</tbody></table>':"";
 
   const win=window.open("","_blank");if(!win){alert("אפשר חלוניות קופצות");return;}
-  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:20px;font-size:12px}.totals{display:flex;gap:12px;margin-bottom:4px}.tot{background:'+color.bg+';border-radius:8px;padding:10px 18px;text-align:center}.tot-n{font-size:20px;font-weight:800;color:'+color.c+'}.tot-l{font-size:10px;color:'+color.c+';opacity:.7}.note{font-size:10px;color:#B45309;background:#FFF7ED;border:1px solid #FED7AA;border-radius:99px;padding:1px 10px;display:inline-block}@media print{@page{margin:1.5cm}.np{display:none}}</style></head><body>'+( d.note?'<div class="note" style="margin-bottom:8px">'+d.note+'</div>':"")+'<h1 style="font-size:18px;color:'+color.c+';margin-bottom:4px">'+displayName+'</h1><p style="color:#6B7280;font-size:11px;margin-bottom:12px">שעות סגל — '+acY+'</p><div class="totals"><div class="tot"><div class="tot-n">'+total.toFixed(2)+'</div><div class="tot-l">שס</div></div><div class="tot"><div class="tot-n">'+( total/2).toFixed(2)+'</div><div class="tot-l">שש</div></div></div>'+internalSection+extSection+bonusSection+'<div class="np" style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
+  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:20px;font-size:12px}.totals{display:flex;gap:12px;margin:12px 0}.tot{background:'+color.bg+';border-radius:8px;padding:10px 20px;text-align:center}.tot-n{font-size:22px;font-weight:800;color:'+color.c+'}.tot-l{font-size:10px;color:'+color.c+';opacity:.7}@media print{@page{margin:1.5cm}.np{display:none}}</style></head><body>'+
+    ( d.note?'<div style="font-size:10px;color:#B45309;background:#FFF7ED;border:1px solid #FED7AA;border-radius:99px;padding:2px 12px;display:inline-block;margin-bottom:8px">'+d.note+'</div>':"" )+
+    '<h1 style="font-size:20px;color:'+color.c+';margin-bottom:2px">'+displayName+'</h1>'+
+    '<p style="color:#6B7280;font-size:11px">שעות סגל — '+acY+'</p>'+
+    '<div class="totals"><div class="tot"><div class="tot-n">'+total.toFixed(2)+'</div><div class="tot-l">שס</div></div><div class="tot"><div class="tot-n">'+( total/2).toFixed(2)+'</div><div class="tot-l">שש</div></div></div>'+
+    internalSection+extSection+bonusSection+
+    '<div class="np" style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
   win.document.close();
 }
 
@@ -292,7 +295,7 @@ function StatsPanel({staff,sched,sc,onUpdate}){
               const si2=lecSchedule[nameKey]&&lecSchedule[nameKey][c.n];
               const autoSem=si2?si2.sem:"";const autoDay=si2?si2.day:"";const autoTime=si2?fmtH(si2.startH)+"-"+fmtH(si2.endH):"";
               return h("div",{key:ci,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:3,marginBottom:3}},
-                h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"courses",ci,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0,lineHeight:1.4}}),
+                h("input",{type:"text",value:c.n,onChange:e=>upField(si,"courses",ci,"n",e.target.value),placeholder:"שם הקורס",style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0,lineHeight:1.4}}),
                 h("select",{value:c.sem||autoSem||"",onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:semStyle},
                   h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
                 h("input",{type:"text",defaultValue:c.day||autoDay||"",onBlur:e=>upField(si,"courses",ci,"day",e.target.value),placeholder:"יום",style:{...fieldStyle,width:36}}),
@@ -306,7 +309,7 @@ function StatsPanel({staff,sched,sc,onUpdate}){
           h("div",{style:{fontSize:10,marginBottom:6}},
             h("div",{style:{fontWeight:600,fontSize:9,color:"#9CA3AF",marginBottom:3,borderBottom:"1px solid #F3F4F6",paddingBottom:2}},"קורסים חיצוניים"),
             sortCourses(d.ext||[],"ext").map(({c,i:ei})=>h("div",{key:ei,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:3,marginBottom:3}},
-              h("input",{type:"text",defaultValue:c.n,onBlur:e=>upField(si,"ext",ei,"n",e.target.value),style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0}}),
+              h("input",{type:"text",value:c.n,onChange:e=>upField(si,"ext",ei,"n",e.target.value),placeholder:"שם הקורס",style:{flex:1,border:"1px solid #E5E7EB",borderRadius:4,background:"#fff",fontSize:10,outline:"none",minWidth:0,padding:"2px 5px"}}),
               h("input",{type:"text",defaultValue:c.dept||"",onBlur:e=>upField(si,"ext",ei,"dept",e.target.value),placeholder:"חוג",style:{...fieldStyle,width:45}}),
               h("select",{value:c.sem||"",onChange:e=>upField(si,"ext",ei,"sem",e.target.value),style:{...semStyle,background:"#FFF7ED",color:"#92400E",border:"1px solid #FED7AA"}},
                 h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
