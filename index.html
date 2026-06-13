@@ -45,13 +45,13 @@ const YTABS=[
   {id:"y3b",s:"ג/ב",deg:"תואר ראשון",lbl:"שנה ג סמ ב",fut:false,zD:[],sem:"ב"},
   {id:"y4a",s:"ד/א",deg:"תואר ראשון",lbl:"שנה ד סמ א",fut:true,zD:[],sem:"א"},
   {id:"y4b",s:"ד/ב",deg:"תואר ראשון",lbl:"שנה ד סמ ב",fut:true,zD:[],sem:"ב"},
-  {id:"m1a",s:"א/א",deg:"תואר שני",lbl:"מ.א שנה א סמ א",fut:false,zD:[],sem:"א"},
-  {id:"m1b",s:"א/ב",deg:"תואר שני",lbl:"מ.א שנה א סמ ב",fut:false,zD:[],sem:"ב"},
-  {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"מ.א שנה ב סמ א",fut:false,zD:[],sem:"א"},
-  {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"מ.א שנה ב סמ ב",fut:false,zD:[],sem:"ב"},
+  {id:"m1a",s:"א/א",deg:"תואר שני",lbl:"שנה א סמ א",fut:false,zD:[],sem:"א"},
+  {id:"m1b",s:"א/ב",deg:"תואר שני",lbl:"שנה א סמ ב",fut:false,zD:[],sem:"ב"},
+  {id:"m2a",s:"ב/א",deg:"תואר שני",lbl:"שנה ב סמ א",fut:false,zD:[],sem:"א"},
+  {id:"m2b",s:"ב/ב",deg:"תואר שני",lbl:"שנה ב סמ ב",fut:false,zD:[],sem:"ב"},
 ];
-const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו"];
-const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv"];
+const AYS=["תשפ״ז","תשפ״ח","תשפ״ט","תש״ץ","תשצ״א","תשצ״ב","תשצ״ג","תשצ״ד","תשצ״ה","תשצ״ו","תשצ״ז","תשצ״ח","תשצ״ט","תש״ק","תת״א","תת״ב","תת״ג","תת״ד","תת״ה","תת״ו"];
+const AYS_KEYS=["tshpz","tshpch","tshpt","tsht","tshtza","tshtzb","tshtzg","tshtzd","tshtze","tshtzv","tshtzz","tshtzch","tshtzt","tshk","tta","ttb","ttg","ttd","tte","ttv"];
 function getYK(y){const i=AYS.findIndex(a=>a===y);return i>=0?AYS_KEYS[i]:"tshpz";}
 const EM=()=>{const o={};DAYS.forEach(d=>{o[d]=[]});return o};
 
@@ -92,40 +92,44 @@ function exportPDF(yid,sched,banners,sc,zoomDays,label,acY){
   win.document.close();
 }
 
-// PDF per lecturer — all courses across all tabs
-function exportLecturerPDF(lecName,sched,sc,acY){
+// PDF per lecturer — from staff card data
+function exportLecturerPDF(lecName,staffData,sc,acY){
   const _sc=sc||{};
-  const color=_sc[lecName]?_sc[lecName]:{c:"#374151",bg:"#F9FAFB"};
-  const displayName=_sc[lecName]&&_sc[lecName].full?_sc[lecName].full:lecName;
-  // Collect all courses for this lecturer
-  const allCourses=[];
-  YTABS.forEach(tab=>{
-    const yd=sched[tab.id]||{};
-    DAYS.forEach(day=>{
-      (yd[day]||[]).forEach(c=>{
-        if(c.lec===lecName||(c.lec&&(c.lec.includes(lecName)||lecName.includes(c.lec)))){
-          allCourses.push({...c,tabLbl:tab.lbl,sem:tab.sem,day,tabId:tab.id});
-        }
-      });
-    });
-  });
-  // Sort: sem A before B, then by day, then by hour
-  allCourses.sort((a,b)=>{
-    if(a.sem!==b.sem)return a.sem==="א"?-1:1;
-    const da=getDayOrder(a.day),db=getDayOrder(b.day);
-    if(da!==db)return da-db;
-    return a.startH-b.startH;
-  });
-  // Build table rows
-  let rows=allCourses.map(c=>{
-    return '<tr><td style="padding:6px 8px;border:1px solid #E5E7EB;font-weight:600;color:'
-      +color.c+'">'+c.course+'</td><td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center">'+c.sem+'</td><td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center">'+c.day+'</td><td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center">'+fmtH(c.startH)+'-'+fmtH(c.endH)+'</td><td style="padding:6px 8px;border:1px solid #E5E7EB">'+c.tabLbl+'</td><td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center">'+c.ss+'</td></tr>';
+  const d=staffData.find(s=>s.name===lecName);
+  if(!d)return;
+  const color=_sc[lecName]||{c:"#374151",bg:"#F9FAFB"};
+  const displayName=(color&&color.full)||lecName;
+  const total=[...d.courses,...(d.ext||[]),...(d.bonuses||[])].reduce((a,c)=>a+(parseFloat(c.ss)||0),0);
+
+  const rowStyle='border:1px solid #E5E7EB;padding:6px 8px;font-size:11px;';
+  const hStyle='background:'+color.bg+';color:'+color.c+';border:1px solid '+color.c+'30;padding:6px 8px;font-size:11px;font-weight:700;';
+
+  // Internal courses table
+  let internalRows=d.courses.map(c=>{
+    return '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>';
   }).join("");
-  const total=allCourses.reduce((a,c)=>a+c.ss,0);
+
+  // External courses table
+  let extRows=(d.ext||[]).map(c=>{
+    return '<tr><td style="'+rowStyle+'font-weight:600">'+c.n+'</td><td style="'+rowStyle+'">'+( c.dept||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.sem||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.day||"")+'</td><td style="'+rowStyle+'text-align:center">'+( c.time||"")+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:'+color.c+'">'+( parseFloat(c.ss)||0).toFixed(1)+'</td></tr>';
+  }).join("");
+
+  // Bonuses
+  let bonusRows=(d.bonuses||[]).map(b=>{
+    return '<tr><td style="'+rowStyle+'font-weight:600;color:#92400E" colspan="4">'+b.n+'</td><td style="'+rowStyle+'text-align:center;font-weight:700;color:#92400E">'+( parseFloat(b.ss)||0).toFixed(1)+'</td></tr>';
+  }).join("");
+
+  const internalSection=d.courses.length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px">קורסי מחלקה</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:40%">קורס</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:15%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+internalRows+'</tbody></table>':"";
+
+  const extSection=(d.ext||[]).length?'<h3 style="font-size:12px;color:#6B7280;margin:14px 0 6px">קורסים חיצוניים</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="'+hStyle+'text-align:right;width:30%">קורס</th><th style="'+hStyle+'text-align:right;width:15%">חוג</th><th style="'+hStyle+'text-align:center;width:8%">סמ</th><th style="'+hStyle+'text-align:center;width:12%">יום</th><th style="'+hStyle+'text-align:center;width:15%">שעות</th><th style="'+hStyle+'text-align:center;width:8%">שס</th></tr></thead><tbody>'+extRows+'</tbody></table>':"";
+
+  const bonusSection=(d.bonuses||[]).length?'<h3 style="font-size:12px;color:#92400E;margin:14px 0 6px">גמולי תפקיד</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:right" colspan="4">גמול</th><th style="background:#FFF7ED;color:#92400E;border:1px solid #FED7AA;padding:6px 8px;font-size:11px;text-align:center">שס</th></tr></thead><tbody>'+bonusRows+'</tbody></table>':"";
+
   const win=window.open("","_blank");if(!win){alert("אפשר חלוניות קופצות");return;}
-  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:20px;font-size:12px}h1{font-size:16px;color:'+color.c+';margin-bottom:4px}h2{font-size:12px;color:#6B7280;margin-bottom:16px;font-weight:400}table{width:100%;border-collapse:collapse}th{background:'+color.bg+';color:'+color.c+';font-size:11px;font-weight:700;padding:8px;border:1px solid #E5E7EB;text-align:center}.total{margin-top:12px;font-weight:700;color:'+color.c+'}@media print{@page{margin:1.5cm}.np{display:none}}</style></head><body><h1>'+displayName+'</h1><h2>מערכת שעות שנתית - '+acY+'</h2><table><thead><tr><th style="text-align:right;width:35%">קורס</th><th>סמ</th><th>יום</th><th>שעות</th><th style="text-align:right">שנתון</th><th>שס</th></tr></thead><tbody>'+rows+'</tbody></table><div class="total">סה"כ: '+total.toFixed(2)+' ש"ס | '+( total/2).toFixed(2)+' ש"ש</div><div class="np" style="margin-top:16px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
+  win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;padding:20px;font-size:12px}.totals{display:flex;gap:12px;margin-bottom:4px}.tot{background:'+color.bg+';border-radius:8px;padding:10px 18px;text-align:center}.tot-n{font-size:20px;font-weight:800;color:'+color.c+'}.tot-l{font-size:10px;color:'+color.c+';opacity:.7}.note{font-size:10px;color:#B45309;background:#FFF7ED;border:1px solid #FED7AA;border-radius:99px;padding:1px 10px;display:inline-block}@media print{@page{margin:1.5cm}.np{display:none}}</style></head><body>'+( d.note?'<div class="note" style="margin-bottom:8px">'+d.note+'</div>':"")+'<h1 style="font-size:18px;color:'+color.c+';margin-bottom:4px">'+displayName+'</h1><p style="color:#6B7280;font-size:11px;margin-bottom:12px">שעות סגל — '+acY+'</p><div class="totals"><div class="tot"><div class="tot-n">'+total.toFixed(2)+'</div><div class="tot-l">שס</div></div><div class="tot"><div class="tot-n">'+( total/2).toFixed(2)+'</div><div class="tot-l">שש</div></div></div>'+internalSection+extSection+bonusSection+'<div class="np" style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">הדפס / PDF</button></div></body></html>');
   win.document.close();
 }
+
 
 // ══ Grid ══
 function Grid({yid,sched,banners,sc,zoomDays,cSet,onEdit,onBannerEdit,onToggleZoom}){
@@ -238,7 +242,7 @@ function StaffColorsModal({sc,onSave,onClose}){
 function StatsPanel({staff,sched,sc,onUpdate}){
   const lecSchedule=useMemo(()=>computeLecSchedule(sched),[sched]);
   const upField=(si,sec,idx,field,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si][sec][idx][field]=(field==="n"||field==="dept"||field==="sem"||field==="day"||field==="time")?val:(parseFloat(val)||0);onUpdate(next);};
-  const addRow=(si,sec)=>{const next=JSON.parse(JSON.stringify(staff));if(sec==="courses")next[si].courses.push({n:"קורס חדש",ss:2,sem:"",day:"",time:""});else if(sec==="ext")next[si].ext.push({n:"קורס חדש",dept:"",ss:2,sem:"",day:"",time:""});else next[si].bonuses.push({n:"גמול תפקיד",ss:1});onUpdate(next);};
+  const addRow=(si,sec)=>{const next=JSON.parse(JSON.stringify(staff));if(sec==="courses")next[si].courses.push({n:"",ss:2,sem:"",day:"",time:""});else if(sec==="ext")next[si].ext.push({n:"",dept:"",ss:2,sem:"",day:"",time:""});else next[si].bonuses.push({n:"גמול תפקיד",ss:1});onUpdate(next);};
   const delRow=(si,sec,idx)=>{const next=JSON.parse(JSON.stringify(staff));next[si][sec].splice(idx,1);onUpdate(next);};
   const upNote=(si,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si].note=val;onUpdate(next);};
   const upName=(si,val)=>{const next=JSON.parse(JSON.stringify(staff));next[si].name=val;onUpdate(next);};
@@ -423,13 +427,12 @@ function App(){
   // PDF menu — per year + per lecturer (dynamic from sc)
   const pdfItems=[
     {label:"── לפי שנתון ──",fn:null},
-    {label:"שנתון נוכחי - "+(curTab?curTab.lbl:""),fn:()=>exportPDF(ay,sched,banners,sc,zoomDays,curTab?curTab.lbl:"",acY)},
     {label:"תואר ראשון",fn:null},
     ...bsc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,sc,zoomDays,t.lbl,acY)})),
     {label:"תואר שני",fn:null},
     ...msc.map(t=>({label:t.lbl,fn:()=>exportPDF(t.id,sched,banners,sc,zoomDays,t.lbl,acY)})),
     {label:"── לפי מרצה ──",fn:null},
-    ...staffNames.map(n=>({label:(sc[n]&&sc[n].full)||n,fn:()=>exportLecturerPDF(n,sched,sc,acY)})),
+    ...staff.map(s=>({label:(sc[s.name]&&sc[s.name].full)||s.name,fn:()=>exportLecturerPDF(s.name,staff,sc,acY)})),
   ];
 
   const dot=h("span",{style:{width:8,height:8,borderRadius:"50%",display:"inline-block",background:saving?"#FCD34D":dbSt==="ok"?"#34D399":"#F87171",marginLeft:4}});
