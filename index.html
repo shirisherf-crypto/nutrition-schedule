@@ -294,12 +294,21 @@ function StatsPanel({staff,sched,sc,onUpdate}){
             sortCourses(d.courses,"courses").map(({c,i:ci})=>{
               const si2=lecSchedule[nameKey]&&lecSchedule[nameKey][c.n];
               const autoSem=si2?si2.sem:"";const autoDay=si2?si2.day:"";const autoTime=si2?fmtH(si2.startH)+"-"+fmtH(si2.endH):"";
+              // Auto-save if field is empty and auto value exists
+              const effSem=c.sem||autoSem;const effDay=c.day||autoDay;const effTime=c.time||autoTime;
+              if((autoSem&&!c.sem)||(autoDay&&!c.day)||(autoTime&&!c.time)){
+                setTimeout(()=>{
+                  if(autoSem&&!c.sem)upField(si,"courses",ci,"sem",autoSem);
+                  if(autoDay&&!c.day)upField(si,"courses",ci,"day",autoDay);
+                  if(autoTime&&!c.time)upField(si,"courses",ci,"time",autoTime);
+                },0);
+              }
               return h("div",{key:ci,style:{display:"flex",alignItems:"center",gap:3,borderBottom:"1px solid #F9FAFB",paddingBottom:3,marginBottom:3}},
                 h("input",{type:"text",value:c.n,onChange:e=>upField(si,"courses",ci,"n",e.target.value),placeholder:"שם הקורס",style:{flex:1,border:"none",background:"transparent",fontSize:10,outline:"none",minWidth:0,lineHeight:1.4}}),
-                h("select",{value:c.sem||autoSem||"",onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:semStyle},
+                h("select",{value:effSem,onChange:e=>upField(si,"courses",ci,"sem",e.target.value),style:semStyle},
                   h("option",{value:""},"סמ?"),h("option",{value:"א"},"א"),h("option",{value:"ב"},"ב"),h("option",{value:"א+ב"},"א+ב")),
-                h("input",{type:"text",value:c.day||autoDay||"",onChange:e=>upField(si,"courses",ci,"day",e.target.value),placeholder:"יום",style:{...fieldStyle,width:36}}),
-                h("input",{type:"text",value:c.time||autoTime||"",onChange:e=>upField(si,"courses",ci,"time",e.target.value),placeholder:"שעות",style:{...fieldStyle,width:58}}),
+                h("input",{type:"text",value:effDay,onChange:e=>upField(si,"courses",ci,"day",e.target.value),placeholder:"יום",style:{...fieldStyle,width:36}}),
+                h("input",{type:"text",value:effTime,onChange:e=>upField(si,"courses",ci,"time",e.target.value),placeholder:"שעות",style:{...fieldStyle,width:58}}),
                 h("input",{type:"number",step:".5",min:"0",value:c.ss,onChange:e=>upField(si,"courses",ci,"ss",e.target.value),style:niStyle(l.c)}),
                 h("span",{style:{fontSize:8,color:"#9CA3AF",flexShrink:0}},"שס"),
                 delBtn(()=>delRow(si,"courses",ci)));
